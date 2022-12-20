@@ -22,7 +22,7 @@ func Filter(row []byte) ([]byte, int) { // returns filtered row and filter index
 	}
 }
 
-func SubFltr(row []byte, bpp int) []byte {
+func subFltr(row []byte, bpp int) []byte {
 	for k, v := range row {
 
 	}
