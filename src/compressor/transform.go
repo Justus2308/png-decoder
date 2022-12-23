@@ -35,39 +35,97 @@ func readData() ([]byte, error) {
 	return data, nil
 }
 
-func decode8Bit(w, h, offset int, topDown bool) ([][]byte, error) {
-	return nil, nil
+func decode8Bit(data []byte, w, h, offset int, topDown bool, palette [][4]byte) ([][]byte, error) {
+	if w == 0 || h == 0 {
+		return [][]byte{}, nil
+	}
+	raw := data[offset:]
+	bits := make([][]byte, h)
+	y0, y1, yDelta := h-1, -1, -1
+	if topDown {
+		y0, y1, yDelta = 0, h, +1
+	}
+	for y := y0; y != y1; y += yDelta {
+		p := raw[y*w : y*w+w*4-(w%4)]
+		bits[y] = p
+	}
+	return bits, nil
+} // TODO: color palette auslesen
+
+func decode24Bit(data []byte, w, h, offset int, topDown bool) ([][]byte, error) {
+	if w == 0 || h == 0 {
+		return [][]byte{}, nil
+	}
+	raw := data[offset:]
+	bits := make([][]byte, h)
+	b := make([]byte, (3*w+3)&^3)
+	y0, y1, yDelta := h-1, -1, -1
+	if topDown {
+		y0, y1, yDelta = 0, h, +1
+	}
+	for y := y0; y != y1; y += yDelta {
+		p := raw[y*w : y*w+w*4]
+		for i, j := 0, 0; i < len(p); i, j = i+4, j+3 {
+			p[i+0] = b[j+2]
+			p[i+1] = b[j+1]
+			p[i+2] = b[j+0]
+			p[i+3] = 0xFF
+		}
+
+		bits[y] = p
+	}
+	return bits, nil
 }
 
-func decode24Bit(w, h, offset int, topDown bool) ([][]byte, error) {
-	return nil, nil
+func decode32Bit(data []byte, w, h, offset int, alpha, topDown bool) ([][]byte, error) {
+	if w == 0 || h == 0 {
+		return [][]byte{}, nil
+	}
+	raw := data[offset:]
+	bits := make([][]byte, h)
+	y0, y1, yDelta := h-1, -1, -1
+	if topDown {
+		y0, y1, yDelta = 0, h, +1
+	}
+	for y := y0; y != y1; y += yDelta {
+		p := raw[y*w : y*w+w*4]
+		for i := 0; i < len(p); i += 4 {
+			p[i+0], p[i+2] = p[i+2], p[i+0]
+			if !alpha {
+			p[i+3] = 0xFF
+			}
+		}
+		bits[y] = p
+	}
+	return bits, nil
 }
 
-func decode32Bit(w, h, offset int, alpha, topDown bool) ([][]byte, error) {
-	return nil, nil
-}
-
-func getBMP() ([][]byte, error) {
+func GetBits() ([][]byte, error) {
 	data, err := readData()
 	if err != nil {
 		return nil, err
 	}
-	w, h, offset, bpp, alpha, topDown, err := decodeHeader((*[138]byte)(data[:138]))
+	w, h, offset, bpp, alpha, topDown, fileinfolen, err := decodeHeader((*[138]byte)(data[:138]))
 	if err != nil {
 		return nil, err
 	}
 	switch bpp {
 	case 8:
-		return decode8Bit(w, h, offset, topDown)
+		b := data[fileinfolen:fileinfolen+256*4]
+		palette := make([][4]byte, 256)
+		for i := range palette {
+			palette[i] = [4]byte{b[4*i+2], b[4*i+1], b[4*i+0], 0xFF}
+		}
+		return decode8Bit(data, w, h, offset, topDown, palette)
 	case 24:
-		return decode24Bit(w, h, offset, topDown)
+		return decode24Bit(data, w, h, offset, topDown)
 	case 32:
-		return decode32Bit(w, h, offset, alpha, topDown)
+		return decode32Bit(data, w, h, offset, alpha, topDown)
 	}
-	return nil, errUnsupported
+	panic(errUnsupported)
 }
 
-func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, error) { // returns width, height, offset, bpp, alpha, topDown, err
+func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, int, error) { // returns width, height, offset, bpp, alpha, topDown, file+infoheader len, err
 	const (
 		fileHeaderLen = 14
 		infoHeaderLen = 40
@@ -75,11 +133,12 @@ func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, error) { // 
 		v5HeaderLen = 124
 	)
 	if !bytes.Equal(head[:2], []byte("BM")) {
-		return 0, 0, 0, 0, false, false, errUnsupported
+		return 0, 0, 0, 0, false, false, 0, errUnsupported
 	}
 	offset, dibLen := bToU32(head[10:fileHeaderLen]), bToU32(head[fileHeaderLen:18])
-	if dibLen != infoHeaderLen || dibLen != v4HeaderLen || dibLen != v5HeaderLen {
-		return 0, 0, 0, 0, false, false, errors.New("unsupported bmp type")
+	if dibLen != infoHeaderLen && dibLen != v4HeaderLen && dibLen != v5HeaderLen {
+		fmt.Println("here")
+		return 0, 0, 0, 0, false, false, 0, errors.New("unsupported bmp type")
 	}
 	topDown := false
 	width, height := int(int32(bToU32(head[18:22]))), int(int32(bToU32(head[22:26])))
@@ -93,35 +152,25 @@ func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, error) { // 
 		compression = 0
 	}
 	if planes != 1 || compression != 0 {
-		return 0, 0, 0, 0, false, false, errUnsupported
+		return 0, 0, 0, 0, false, false, 0, errUnsupported
 	}
 	switch bpp {
 	case 8:
 		if offset != fileHeaderLen+dibLen+256*4 {
-			return 0, 0, 0, 0, false, false, errUnsupported
+			return 0, 0, 0, 0, false, false, 0, errUnsupported
 		}
-		return width, height, int(int32(offset)), 8, false, topDown, nil
+		return width, height, int(int32(offset)), 8, false, topDown, int(int32(fileHeaderLen+dibLen)), nil
 	case 24:
 		if offset != fileHeaderLen+dibLen {
-			return 0, 0, 0, 0, false, false, errUnsupported
+			return 0, 0, 0, 0, false, false, 0, errUnsupported
 		}
-		return width, height, int(int32(offset)), 24, false, topDown, nil
+		return width, height, int(int32(offset)), 24, false, topDown, 0, nil
 	case 32:
 		if offset != fileHeaderLen+dibLen {
-			return 0, 0, 0, 0, false, false, errUnsupported
+			return 0, 0, 0, 0, false, false, 0, errUnsupported
 		}
 		alpha := dibLen > infoHeaderLen
-		return width, height, int(int32(offset)), 32, alpha, topDown, nil
+		return width, height, int(int32(offset)), 32, alpha, topDown, 0, nil
 	}
-	return 0, 0, 0, 0, false, false, errUnsupported
-}
-
-func getRGBAX() [5]int {
-	return [5]int{}
-}
-
-func main() {
-	str := "C:\\Users\\justu\\Downloads\\bmp_24.bmp"
-	src = &str
-	fmt.Println(getBMP())
+	return 0, 0, 0, 0, false, false, 0, errUnsupported
 }
