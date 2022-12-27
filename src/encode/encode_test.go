@@ -53,7 +53,11 @@ func TestDeflate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defl := deflate(bits)
+	defl, err := deflate(bits)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	t.Log(defl)
 }
 
@@ -65,6 +69,30 @@ func TestChunker(t *testing.T) {
 		return
 	}
 	filt, _ := Filter(&bits, w, h, bpp)
-	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
+	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	t.Log(chunked)
+}
+
+func TestCreatePng(t *testing.T) {
+	source = &str
+	bits, w, h, bpp, alpha, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	filt, _ := Filter(&bits, w, h, bpp)
+	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = makePng(chunked, "/Users/justusklausecker/git/png-decoder/src/encode/test_images", "test1")
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/binary"
+	"io"
 )
 
 
@@ -13,24 +14,38 @@ func u32toB(i uint32) []byte {
 	return b
 }
 
-func deflate(filt [][]byte) []byte {
-	var buf bytes.Buffer
-	w, _ := zlib.NewWriterLevel(&buf, 8) // deflate with compression level 8
+func deflate(filt [][]byte) ([]byte, error) {
+	bufSlc := make([]byte, 0, 65536)
+	buf := bytes.NewBuffer(bufSlc)
+	w, _ := zlib.NewWriterLevel(buf, 8) // deflate with compression level 8
 	defer w.Close()
+	var comp []byte
 	for _, b := range filt {
-		w.Write(b)
+		_, err := w.Write(b)
+		if err != nil {
+			return nil, err
+		}
+		r, err := io.ReadAll(buf)
+		if err != nil {
+			return nil, err
+		}
+		comp = append(comp, r...)
 	}
-	return buf.Bytes()
+	return comp, nil
 }
 
-func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) []byte {
+func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) ([]byte, error) {
 	chunked := makeIHDR(w, h, bpp, alpha, interlaced)
 	if bpp == 8 {
 		chunked = append(chunked, makePLTE(palette)...)
 	}
-	chunked = append(chunked, makeIDAT(filt)...)
+	idat, err := makeIDAT(filt)
+	if err != nil {
+		return nil, err
+	}
+	chunked = append(chunked, idat...)
 	chunked = append(chunked, makeIEND()...)
-	return chunked
+	return chunked, nil
 }
 
 func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
@@ -70,11 +85,14 @@ func makePLTE(palette [][4]byte) []byte {
 	return plte
 }
 
-func makeIDAT(filt [][]byte) []byte {
+func makeIDAT(filt [][]byte) ([]byte, error) {
 	idat := []byte{73, 68, 65, 84}
-	data := deflate(filt)
+	data, err := deflate(filt)
+	if err != nil {
+		return nil, err
+	}
 	idat = append(idat, data...)
-	return idat
+	return idat, nil
 }
 
 func makeIEND() []byte {
