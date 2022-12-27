@@ -2,12 +2,13 @@ package encode
 
 import (
 	"testing"
+	"png-decoder/src/global"
 )
 
-var str = "/Users/justusklausecker//git/png-decoder/src/encode/test_images/test_24bpp_source.bmp"
+var path = "test_images/test_24bpp.bmp"
 
 func TestGetBits(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	transformed, _, _, _, _, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -17,7 +18,7 @@ func TestGetBits(t *testing.T) {
 }
 
 func TestMinAbsDiff(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	bitsT, _, _, _, _, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -30,7 +31,7 @@ func TestMinAbsDiff(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	bits, w, h, bpp, _, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -47,7 +48,7 @@ func TestIHDR(t *testing.T) {
 }
 
 func TestDeflate(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	bits, _, _, _, _, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -62,7 +63,7 @@ func TestDeflate(t *testing.T) {
 }
 
 func TestChunker(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	bits, w, h, bpp, alpha, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -78,7 +79,7 @@ func TestChunker(t *testing.T) {
 }
 
 func TestCreatePng(t *testing.T) {
-	source = &str
+	global.SetPath(path)
 	bits, w, h, bpp, alpha, err := GetBits()
 	if err != nil {
 		t.Error(err)
@@ -90,7 +91,7 @@ func TestCreatePng(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	err = makePng(chunked, "/Users/justusklausecker/git/png-decoder/src/encode/test_images", "test_24bpp")
+	err = makePng(chunked)
 	if err != nil {
 		t.Error(err)
 		return

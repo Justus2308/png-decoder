@@ -3,13 +3,13 @@ package encode
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"io"
 	"os"
+
+	"png-decoder/src/global"
 )
 
 var (
-	source = flag.String("src", "", "path to the source image")
 	errUnsupported = errors.New("unsupported format")
 )
 
@@ -23,7 +23,7 @@ func bToU32(b []byte) uint32 {
 }
 
 func readData() ([]byte, error) {
-	in, err := os.Open(*source)
+	in, err := os.Open(global.Path())
 	if err != nil {
 		return nil, err
 	}
