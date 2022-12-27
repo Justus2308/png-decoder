@@ -1,8 +1,9 @@
-package compressor
+package encode
 
 import (
-	"bytes"
 	"sort"
+
+	"png-decoder/src/paethAlg"
 )
 
 const (
@@ -13,12 +14,6 @@ const (
 	paeth
 )
 
-var (
-	search = bytes.NewBuffer(make([]byte, 32))
-	lookahead = bytes.NewBuffer(make([]byte, 258))
-
-	bpp int
-)
 
 func sortSlc(row []byte) []byte {
 	sorted := row
@@ -42,31 +37,69 @@ func sign128(b byte) int8 {
 	return -int8(255-b+1)
 }
 
-func absSum(slc []byte) int8 {
-	var sum int8 = 0
+func absSum(slc []byte) int {
+	sum := 0
 	n := len(slc)
 
-	sum += sign128(slc[0] - slc[1])
-	sum += sign128(slc[n-1] - slc[n-2])
+	sum += int(sign128(slc[0] - slc[1]))
+	sum += int(sign128(slc[n-1] - slc[n-2]))
 
 	for i := 1; i < n-1; i++ {
-		sum += sign128(min(slc[i] - slc[i-1], slc[i] - slc[i+1]))
+		sum += int(sign128(min(slc[i] - slc[i-1], slc[i] - slc[i+1])))
 	}
 	return sum
 }
 
-func MinAbsDiff(slc []byte) int8 {
+func minAbsDiff(slc []byte) int {
 	sorted := sortSlc(slc)
 	return absSum(sorted)
 }
 
-func Filter(row []byte) ([]byte, int) { // returns filtered row and filter index
-	if bpp == 8 {
-		return row, none
+func lowestScoreID(scores... []byte) int {
+	id := none
+	if len(scores) == 1 {
+		return id
 	}
-	mad := MinAbsDiff(row)
-	return nil, 0
+	lowest := minAbsDiff(scores[0])
+	for i := 1; i < len(scores); i++ {
+		if mad := minAbsDiff(scores[i]); mad < lowest {
+			lowest = mad
+			id = i
+		}
+	}
+	return id
 }
+
+// TODO: parellelize with goroutines
+func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte, filtIDs []int) { // returns filtered row and filter index
+	filtered = make([][]byte, h)
+	filtIDs = make([]int, h)
+	for r := 0; r < h; r++ {
+		subF := subFltr(bits, r, w)
+		upF := upFltr(bits, r, w)
+		averageF := averageFltr(bits, r, w)
+		paethF := paethFltr(bits, r, w)
+		switch lowestScoreID((*bits)[r], subF, upF, averageF, paethF) {
+		case none:
+			filtered[r] = (*bits)[r]
+			filtIDs[r] = none
+		case sub:
+			filtered[r] = subF
+			filtIDs[r] = sub
+		case up:
+			filtered[r] = upF
+			filtIDs[r] = up
+		case average:
+			filtered[r] = averageF
+			filtIDs[r] = average
+		case paeth:
+			filtered[r] = paethF
+			filtIDs[r] = paeth
+		}
+	}
+	return filtered, filtIDs
+}
+// before using Filter(), images with a bpp of 8 should be excluded
 
 func subFltr(orig *([][]byte), r, w int) []byte {
 	filt := make([]byte, w)
@@ -82,7 +115,7 @@ func upFltr(orig *([][]byte), r, w int) []byte {
 		return (*orig)[r]
 	}
 	filt := make([]byte, w)
-	for i := range (*orig)[r] {
+	for i := 0; i < w; i++ {
 		filt[i] = (*orig)[r][i] - (*orig)[r-1][i]
 	}
 	return filt
@@ -116,33 +149,10 @@ func paethFltr(orig *([][]byte), r, w int) []byte {
 	}
 	filt := make([]byte, w)
 	for i := 0; i < 4; i++ {
-		filt[i] = (*orig)[r][i] - paethPred(0, (*prev)[i], (*prev)[i-1])
+		filt[i] = (*orig)[r][i] - paethAlg.PaethPred(0, (*prev)[i], 0)
 	}
 	for i := 4; i < w; i++ {
-		filt[i] = (*orig)[r][i] - paethPred((*orig)[r][i-1], (*prev)[i], (*prev)[i-1])
+		filt[i] = (*orig)[r][i] - paethAlg.PaethPred((*orig)[r][i-1], (*prev)[i], (*prev)[i-1])
 	}
 	return filt
-}
-
-func paethPred(a, b, c byte) byte {
-	p := int16(a) + int16(b) - int16(c)
-	pa := absU8(p - int16(a))
-	pb := absU8(p - int16(b))
-	pc := absU8(p - int16(c))
-	var pr byte
-	if pa <= pb && pa <= pc {
-		pr = a
-	} else if pb <= pc {
-		pr = b
-	} else {
-		pr = c
-	}
-	return pr
-}
-
-func absU8(i int16) uint8 {
-	if i < 0 {
-		return uint8(-i)
-	}
-	return uint8(i)
 }

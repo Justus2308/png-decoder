@@ -1,0 +1,70 @@
+package encode
+
+import (
+	"testing"
+)
+
+var str = "/Users/justusklausecker/Downloads/colors_24bpp.bmp"
+
+func TestGetBits(t *testing.T) {
+	source = &str
+	transformed, _, _, _, _, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(transformed)
+}
+
+func TestMinAbsDiff(t *testing.T) {
+	source = &str
+	bitsT, _, _, _, _, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(bitsT)
+	for _, v := range bitsT {
+		t.Log(minAbsDiff(v))
+	}
+}
+
+func TestFilter(t *testing.T) {
+	source = &str
+	bits, w, h, bpp, _, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	filtered, ids := Filter(&bits, w, h, bpp)
+	t.Log(filtered)
+	t.Log(ids)
+}
+
+func TestIHDR(t *testing.T) {
+	ihdr := makeIHDR(600, 750, 32, true, false)
+	t.Log(ihdr)
+}
+
+func TestDeflate(t *testing.T) {
+	source = &str
+	bits, _, _, _, _, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defl := deflate(bits)
+	t.Log(defl)
+}
+
+func TestChunker(t *testing.T) {
+	source = &str
+	bits, w, h, bpp, alpha, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	filt, _ := Filter(&bits, w, h, bpp)
+	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
+	t.Log(chunked)
+}

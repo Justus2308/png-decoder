@@ -1,4 +1,4 @@
-package compressor
+package encode
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	src = flag.String("src", "", "path to the source image")
+	source = flag.String("src", "", "path to the source image")
 	errUnsupported = errors.New("unsupported format")
 )
 
@@ -23,7 +23,7 @@ func bToU32(b []byte) uint32 {
 }
 
 func readData() ([]byte, error) {
-	in, err := os.Open(*src)
+	in, err := os.Open(*source)
 	if err != nil {
 		return nil, err
 	}
@@ -35,12 +35,12 @@ func readData() ([]byte, error) {
 	return data, nil
 }
 
-func decode8Bit(data []byte, w, h, offset int, topDown bool, palette [][4]byte) ([][]byte, error) {
+func decode8Bit(data []byte, w, h, offset, bpp int, topDown bool, palette [][4]byte) (bits [][]byte, wR, hR, bppR int, alphaR bool, err error) {
 	if w == 0 || h == 0 {
-		return [][]byte{}, nil
+		return [][]byte{}, w, h, bpp, false, nil
 	}
 	raw := data[offset:]
-	bits := make([][]byte, h)
+	bits = make([][]byte, h)
 	y0, y1, yDelta := h-1, -1, -1
 	if topDown {
 		y0, y1, yDelta = 0, h, +1
@@ -49,15 +49,15 @@ func decode8Bit(data []byte, w, h, offset int, topDown bool, palette [][4]byte) 
 		p := raw[y*w : y*w+w*4-(w%4)]
 		bits[y] = p
 	}
-	return bits, nil
+	return bits, w, h, bpp, false, nil
 }
 
-func decode24Bit(data []byte, w, h, offset int, topDown bool) ([][]byte, error) {
+func decode24Bit(data []byte, w, h, offset, bpp int, topDown bool) (bits [][]byte, wR, hR, bppR int, alphaR bool, err error) {
 	if w == 0 || h == 0 {
-		return [][]byte{}, nil
+		return [][]byte{}, w, h, bpp, false, nil
 	}
 	raw := data[offset:]
-	bits := make([][]byte, h)
+	bits = make([][]byte, h)
 	b := make([]byte, (3*w+3)&^3)
 	y0, y1, yDelta := h-1, -1, -1
 	if topDown {
@@ -74,15 +74,15 @@ func decode24Bit(data []byte, w, h, offset int, topDown bool) ([][]byte, error) 
 
 		bits[y] = p
 	}
-	return bits, nil
+	return bits, w, h, bpp, false, nil
 }
 
-func decode32Bit(data []byte, w, h, offset int, alpha, topDown bool) ([][]byte, error) {
+func decode32Bit(data []byte, w, h, offset, bpp int, alpha, topDown bool) (bits [][]byte, wR, hR, bppR int, alphaR bool, err error) {
 	if w == 0 || h == 0 {
-		return [][]byte{}, nil
+		return [][]byte{}, 0, 0, 0, alpha, nil
 	}
 	raw := data[offset:]
-	bits := make([][]byte, h)
+	bits = make([][]byte, h)
 	y0, y1, yDelta := h-1, -1, -1
 	if topDown {
 		y0, y1, yDelta = 0, h, +1
@@ -97,17 +97,17 @@ func decode32Bit(data []byte, w, h, offset int, alpha, topDown bool) ([][]byte, 
 		}
 		bits[y] = p
 	}
-	return bits, nil
+	return bits, w, h, bpp, alpha, nil
 }
 
-func GetBits() ([][]byte, error) {
+func GetBits() (bits [][]byte, w, h, bpp int, alpha bool, err error) {
 	data, err := readData()
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, 0, false, err
 	}
 	w, h, offset, bpp, alpha, topDown, fileinfolen, err := decodeHeader((*[138]byte)(data[:138]))
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, 0, false, err
 	}
 	switch bpp {
 	case 8:
@@ -116,16 +116,16 @@ func GetBits() ([][]byte, error) {
 		for i := range palette {
 			palette[i] = [4]byte{b[4*i+2], b[4*i+1], b[4*i+0], 0xFF}
 		}
-		return decode8Bit(data, w, h, offset, topDown, palette)
+		return decode8Bit(data, w, h, offset, bpp, topDown, palette)
 	case 24:
-		return decode24Bit(data, w, h, offset, topDown)
+		return decode24Bit(data, w, h, offset, bpp, topDown)
 	case 32:
-		return decode32Bit(data, w, h, offset, alpha, topDown)
+		return decode32Bit(data, w, h, offset, bpp, alpha, topDown)
 	}
 	panic(errUnsupported)
 }
 
-func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, int, error) { // returns width, height, offset, bpp, alpha, topDown, file+infoheader len, err
+func decodeHeader(head *[138]byte) (w, h, offsetInt, bppInt int, alpha, topDown bool, fileInfoLen int, err error) {
 	const (
 		fileHeaderLen = 14
 		infoHeaderLen = 40
@@ -139,7 +139,7 @@ func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, int, error) 
 	if dibLen != infoHeaderLen && dibLen != v4HeaderLen && dibLen != v5HeaderLen {
 		return 0, 0, 0, 0, false, false, 0, errors.New("unsupported bmp type")
 	}
-	topDown := false
+	topDown = false
 	width, height := int(int32(bToU32(head[18:22]))), int(int32(bToU32(head[22:26])))
 	if height < 0 {
 		height, topDown = -height, true
