@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-var str = "/Users/justusklausecker/Downloads/colors_24bpp.bmp"
+var str = "/Users/justusklausecker//git/png-decoder/src/encode/test_images/test_24bpp_source.bmp"
 
 func TestGetBits(t *testing.T) {
 	source = &str
@@ -90,7 +90,7 @@ func TestCreatePng(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	err = makePng(chunked, "/Users/justusklausecker/git/png-decoder/src/encode/test_images", "test1")
+	err = makePng(chunked, "/Users/justusklausecker/git/png-decoder/src/encode/test_images", "test_24bpp")
 	if err != nil {
 		t.Error(err)
 		return

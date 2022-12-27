@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/binary"
-	"io"
 )
 
 
@@ -25,11 +24,8 @@ func deflate(filt [][]byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		r, err := io.ReadAll(buf)
-		if err != nil {
-			return nil, err
-		}
-		comp = append(comp, r...)
+		comp = append(comp, buf.Bytes()...)
+		w.Flush()
 	}
 	return comp, nil
 }
