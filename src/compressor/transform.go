@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 )
@@ -13,6 +12,7 @@ var (
 	src = flag.String("src", "", "path to the source image")
 	errUnsupported = errors.New("unsupported format")
 )
+
 
 func bToU16(b []byte) uint16 {
 	return uint16(b[0]) | uint16(b[1])<<8
@@ -50,7 +50,7 @@ func decode8Bit(data []byte, w, h, offset int, topDown bool, palette [][4]byte) 
 		bits[y] = p
 	}
 	return bits, nil
-} // TODO: color palette auslesen
+}
 
 func decode24Bit(data []byte, w, h, offset int, topDown bool) ([][]byte, error) {
 	if w == 0 || h == 0 {
@@ -137,7 +137,6 @@ func decodeHeader(head *[138]byte) (int, int, int, int, bool, bool, int, error) 
 	}
 	offset, dibLen := bToU32(head[10:fileHeaderLen]), bToU32(head[fileHeaderLen:18])
 	if dibLen != infoHeaderLen && dibLen != v4HeaderLen && dibLen != v5HeaderLen {
-		fmt.Println("here")
 		return 0, 0, 0, 0, false, false, 0, errors.New("unsupported bmp type")
 	}
 	topDown := false
