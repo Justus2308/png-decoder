@@ -70,10 +70,16 @@ func lowestScoreID(scores... []byte) int {
 	return id
 }
 
+func prepend(slc []byte, b byte) []byte {
+	slc = append(slc, 0)
+	copy(slc[1:], slc)
+	slc[0] = b
+	return slc
+}
+
 // TODO: parellelize with goroutines
-func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte, filtIDs []int) { // returns filtered row and filter index
+func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte) { // returns filtered row with prepended filter index
 	filtered = make([][]byte, h)
-	filtIDs = make([]int, h)
 	for r := 0; r < h; r++ {
 		subF := subFltr(bits, r, w)
 		upF := upFltr(bits, r, w)
@@ -82,22 +88,22 @@ func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte, filtIDs []int) 
 		switch lowestScoreID((*bits)[r], subF, upF, averageF, paethF) {
 		case none:
 			filtered[r] = (*bits)[r]
-			filtIDs[r] = none
+			filtered[r] = prepend(filtered[r], none)
 		case sub:
 			filtered[r] = subF
-			filtIDs[r] = sub
+			filtered[r] = prepend(filtered[r], sub)
 		case up:
 			filtered[r] = upF
-			filtIDs[r] = up
+			filtered[r] = prepend(filtered[r], up)
 		case average:
 			filtered[r] = averageF
-			filtIDs[r] = average
+			filtered[r] = prepend(filtered[r], average)
 		case paeth:
 			filtered[r] = paethF
-			filtIDs[r] = paeth
+			filtered[r] = prepend(filtered[r], paeth)
 		}
 	}
-	return filtered, filtIDs
+	return filtered
 }
 // before using Filter(), images with a bpp of 8 should be excluded
 

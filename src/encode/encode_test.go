@@ -2,6 +2,7 @@ package encode
 
 import (
 	"testing"
+
 	"png-decoder/src/global"
 )
 
@@ -37,9 +38,8 @@ func TestFilter(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filtered, ids := Filter(&bits, w, h, bpp)
+	filtered := Filter(&bits, w, h, bpp)
 	t.Log(filtered)
-	t.Log(ids)
 }
 
 func TestIHDR(t *testing.T) {
@@ -69,7 +69,7 @@ func TestChunker(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filt, _ := Filter(&bits, w, h, bpp)
+	filt := Filter(&bits, w, h, bpp)
 	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
 	if err != nil {
 		t.Error(err)
@@ -85,13 +85,13 @@ func TestCreatePng(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filt, _ := Filter(&bits, w, h, bpp)
+	filt := Filter(&bits, w, h, bpp)
 	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = makePng(chunked)
+	err = createPng(chunked)
 	if err != nil {
 		t.Error(err)
 		return
