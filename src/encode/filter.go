@@ -108,9 +108,9 @@ func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte) { // returns fi
 // before using Filter(), images with a bpp of 8 should be excluded
 
 func subFltr(orig *([][]byte), r, w int) []byte {
-	filt := make([]byte, w)
+	filt := make([]byte, w*4)
 	filt[0], filt[1], filt[2], filt[3] = (*orig)[r][0], (*orig)[r][1], (*orig)[r][2], (*orig)[r][3]
-	for i := 4; i < w; i++ {
+	for i := 4; i < w*4; i++ {
 		filt[i] = (*orig)[r][i] - (*orig)[r][i-4]
 	}
 	return filt
@@ -120,8 +120,8 @@ func upFltr(orig *([][]byte), r, w int) []byte {
 	if r == 0 {
 		return (*orig)[r]
 	}
-	filt := make([]byte, w)
-	for i := 0; i < w; i++ {
+	filt := make([]byte, w*4)
+	for i := 0; i < w*4; i++ {
 		filt[i] = (*orig)[r][i] - (*orig)[r-1][i]
 	}
 	return filt
@@ -130,16 +130,16 @@ func upFltr(orig *([][]byte), r, w int) []byte {
 func averageFltr(orig *([][]byte), r, w int) []byte {
 	var prev *[]byte
 	if r == 0 {
-		zero := make([]byte, w)
+		zero := make([]byte, w*4)
 		prev = &zero
 	} else {
 		prev = &(*orig)[r-1]
 	}
-	filt := make([]byte, w)
+	filt := make([]byte, w*4)
 	for i := 0; i < 4; i++ {
 		filt[i] = (*orig)[r][i] - ((*prev)[i] / 2)
 	}
-	for i := 4; i < w; i++ {
+	for i := 4; i < w*4; i++ {
 		filt[i] = (*orig)[r][i] - uint8((uint16((*orig)[r][i-4]) + uint16((*prev)[i])) / 2)
 	}
 	return filt
@@ -148,16 +148,16 @@ func averageFltr(orig *([][]byte), r, w int) []byte {
 func paethFltr(orig *([][]byte), r, w int) []byte {
 	var prev *[]byte
 	if r == 0 {
-		zero := make([]byte, w)
+		zero := make([]byte, w*4)
 		prev = &zero
 	} else {
 		prev = &(*orig)[r-1]
 	}
-	filt := make([]byte, w)
+	filt := make([]byte, w*4)
 	for i := 0; i < 4; i++ {
 		filt[i] = (*orig)[r][i] - paethAlg.PaethPred(0, (*prev)[i], 0)
 	}
-	for i := 4; i < w; i++ {
+	for i := 4; i < w*4; i++ {
 		filt[i] = (*orig)[r][i] - paethAlg.PaethPred((*orig)[r][i-1], (*prev)[i], (*prev)[i-1])
 	}
 	return filt

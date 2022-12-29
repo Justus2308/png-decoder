@@ -15,20 +15,21 @@ func u32toB(i uint32) []byte {
 }
 
 func deflate(filt [][]byte) ([]byte, error) {
-	bufSlc := make([]byte, 0, 65536)
-	buf := bytes.NewBuffer(bufSlc)
-	w, _ := zlib.NewWriterLevel(buf, 8) // deflate with compression level 8
-	defer w.Close()
-	var comp []byte
-	for _, b := range filt {
-		_, err := w.Write(b)
+	var (
+		buf bytes.Buffer
+		defl []byte
+	)
+	w, _ := zlib.NewWriterLevel(&buf, 8)
+	for _, f := range filt {
+		_, err := bytes.NewReader(f).WriteTo(w)
 		if err != nil {
 			return nil, err
 		}
-		comp = append(comp, buf.Bytes()...)
 		w.Flush()
+		defl = append(defl, buf.Bytes()...)
+		buf.Reset()
 	}
-	return comp, nil
+	return defl, nil
 }
 
 func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) ([]byte, error) {
