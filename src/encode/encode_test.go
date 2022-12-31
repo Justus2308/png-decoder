@@ -8,9 +8,11 @@ import (
 
 var path = "test_images/test_24bpp.bmp"
 
+
 func TestGetBits(t *testing.T) {
 	global.SetPath(path)
-	transformed, _, _, _, _, err := GetBits()
+	transformed, _, _, bpp, _, err := GetBits()
+	t.Log("depth:", bpp)
 	if err != nil {
 		t.Error(err)
 		return
@@ -25,7 +27,6 @@ func TestMinAbsDiff(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	t.Log(bitsT)
 	for _, v := range bitsT {
 		t.Log(minAbsDiff(v))
 	}
@@ -91,6 +92,30 @@ func TestCreatePng(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	err = createPng(chunked)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestCreateUnfilteredPng(t *testing.T) {
+	global.SetPath(path)
+	bits, w, h, bpp, alpha, err := GetBits()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	filt := make([][]byte, h)
+	for i := range bits {
+		filt[i] = prepend(bits[i], 0)
+	}
+	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	suffix = "_unfilt.png"
 	err = createPng(chunked)
 	if err != nil {
 		t.Error(err)

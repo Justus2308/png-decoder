@@ -80,6 +80,13 @@ func prepend(slc []byte, b byte) []byte {
 // TODO: parellelize with goroutines
 func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte) { // returns filtered row with prepended filter index
 	filtered = make([][]byte, h)
+	if bpp == 8 {
+		for r := 0; r < h; r++ {
+			filtered[r] = (*bits)[r]
+			filtered[r] = prepend(filtered[r], none)
+		}
+		return filtered
+	}
 	for r := 0; r < h; r++ {
 		subF := subFltr(bits, r, w)
 		upF := upFltr(bits, r, w)
@@ -105,13 +112,14 @@ func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte) { // returns fi
 	}
 	return filtered
 }
-// before using Filter(), images with a bpp of 8 should be excluded
 
 func subFltr(orig *([][]byte), r, w int) []byte {
-	filt := make([]byte, w*4)
-	filt[0], filt[1], filt[2], filt[3] = (*orig)[r][0], (*orig)[r][1], (*orig)[r][2], (*orig)[r][3]
-	for i := 4; i < w*4; i++ {
-		filt[i] = (*orig)[r][i] - (*orig)[r][i-4]
+	filt := make([]byte, w*2)
+	filt[0], filt[1] = (*orig)[r][0], (*orig)[r][1]
+	for i := 2; i < w*2; i++ {
+		ch1 := (((*orig)[r][i] & 0xF0) >> 4) - (((*orig)[r][i-2] & 0xF0) >> 4)
+		ch2 := ((*orig)[r][i] & 0x0F) - ((*orig)[r][i-2] & 0x0F)
+		filt[i] = (ch1 << 4) | ch2
 	}
 	return filt
 }
@@ -120,8 +128,8 @@ func upFltr(orig *([][]byte), r, w int) []byte {
 	if r == 0 {
 		return (*orig)[r]
 	}
-	filt := make([]byte, w*4)
-	for i := 0; i < w*4; i++ {
+	filt := make([]byte, w*2)
+	for i := 0; i < w*2; i++ {
 		filt[i] = (*orig)[r][i] - (*orig)[r-1][i]
 	}
 	return filt

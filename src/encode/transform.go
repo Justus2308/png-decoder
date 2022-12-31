@@ -58,12 +58,12 @@ func decode24Bit(data []byte, w, h, offset, bpp int, topDown bool) (bits [][]byt
 	}
 	raw := data[offset:]
 	bits = make([][]byte, h)
-	b := make([]byte, (3*w+3)&^3)
+	// b := make([]byte, (3*w+3)&^3)
 	y0, y1, yDelta := h-1, -1, -1
 	if topDown {
 		y0, y1, yDelta = 0, h, +1
 	}
-	for y := y0; y != y1; y += yDelta {
+	/*for y := y0; y != y1; y += yDelta {
 		p := raw[y*w : y*w+w*4]
 		for i, j := 0, 0; i < len(p); i, j = i+4, j+3 {
 			p[i+0] = b[j+2]
@@ -71,8 +71,15 @@ func decode24Bit(data []byte, w, h, offset, bpp int, topDown bool) (bits [][]byt
 			p[i+2] = b[j+0]
 			p[i+3] = 0xFF
 		}
-
 		bits[y] = p
+	}*/
+	for y := y0; y != y1; y += yDelta {
+		p := raw[y*w*3 : (y+1)*w*3]
+		for i, j := 0, 0; j < len(p); i, j = i+2, j+3 {
+			bits[y] = make([]byte, w*2)
+			bits[y][i+0] = p[j+2] & 0xF0 | p[j+1]>>4
+			bits[y][i+1] = p[j+0] & 0xF0 | 0x0F
+		}
 	}
 	return bits, w, h, bpp, false, nil
 }
