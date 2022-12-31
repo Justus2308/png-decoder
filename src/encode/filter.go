@@ -1,13 +1,14 @@
 package encode
 
 import (
+	"fmt"
 	"sort"
 
 	"png-decoder/src/paethAlg"
 )
 
 const (
-	none = iota
+	none uint8 = iota
 	sub
 	up
 	average
@@ -55,7 +56,7 @@ func minAbsDiff(slc []byte) int {
 	return absSum(sorted)
 }
 
-func lowestScoreID(scores... []byte) int {
+func lowestScoreID(scores... []byte) uint8 {
 	id := none
 	if len(scores) == 1 {
 		return id
@@ -64,7 +65,7 @@ func lowestScoreID(scores... []byte) int {
 	for i := 1; i < len(scores); i++ {
 		if mad := minAbsDiff(scores[i]); mad < lowest {
 			lowest = mad
-			id = i
+			id = uint8(i)
 		}
 	}
 	return id
@@ -96,30 +97,33 @@ func Filter(bits *([][]byte), w, h, bpp int) (filtered [][]byte) { // returns fi
 		case none:
 			filtered[r] = (*bits)[r]
 			filtered[r] = prepend(filtered[r], none)
+			fmt.Println(none)
 		case sub:
 			filtered[r] = subF
 			filtered[r] = prepend(filtered[r], sub)
+			fmt.Println(sub)
 		case up:
 			filtered[r] = upF
 			filtered[r] = prepend(filtered[r], up)
+			fmt.Println(up)
 		case average:
 			filtered[r] = averageF
 			filtered[r] = prepend(filtered[r], average)
+			fmt.Println(average)
 		case paeth:
 			filtered[r] = paethF
 			filtered[r] = prepend(filtered[r], paeth)
+			fmt.Println(paeth)
 		}
 	}
 	return filtered
 }
 
 func subFltr(orig *([][]byte), r, w int) []byte {
-	filt := make([]byte, w*2)
+	filt := make([]byte, w*4)
 	filt[0], filt[1] = (*orig)[r][0], (*orig)[r][1]
-	for i := 2; i < w*2; i++ {
-		ch1 := (((*orig)[r][i] & 0xF0) >> 4) - (((*orig)[r][i-2] & 0xF0) >> 4)
-		ch2 := ((*orig)[r][i] & 0x0F) - ((*orig)[r][i-2] & 0x0F)
-		filt[i] = (ch1 << 4) | ch2
+	for i := 4; i < w*4; i++ {
+		filt[i] = (*orig)[r][i] - (*orig)[r][i-4]
 	}
 	return filt
 }
@@ -128,8 +132,8 @@ func upFltr(orig *([][]byte), r, w int) []byte {
 	if r == 0 {
 		return (*orig)[r]
 	}
-	filt := make([]byte, w*2)
-	for i := 0; i < w*2; i++ {
+	filt := make([]byte, w*4)
+	for i := 0; i < w*4; i++ {
 		filt[i] = (*orig)[r][i] - (*orig)[r-1][i]
 	}
 	return filt

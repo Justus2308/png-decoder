@@ -51,16 +51,16 @@ func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
 	ihdr = append(ihdr, []byte{73, 72, 68, 82}...) // chunk type field
 	ihdr = append(ihdr, u32toB(uint32(w))...) // width in 4 bits
 	ihdr = append(ihdr, u32toB(uint32(h))...) // height in 4 bits
-	switch bpp { // bit depth + colour type, only supports indexed-colour, truecolour and truecolour+alpha
+	switch bpp { // sample depth + colour type, only supports indexed-colour, truecolour and truecolour+alpha
 	case 8:
 		ihdr = append(ihdr, []byte{8, 3}...)
 	case 24:
-		ihdr = append(ihdr, []byte{16, 2}...)
+		ihdr = append(ihdr, []byte{8, 2}...)
 	case 32:
 		if alpha {
-			ihdr = append(ihdr, []byte{16, 6}...)
+			ihdr = append(ihdr, []byte{8, 6}...)
 		} else {
-			ihdr = append(ihdr, []byte{16, 2}...)
+			ihdr = append(ihdr, []byte{8, 2}...)
 		}
 	}
 	ihdr = append(ihdr, 0) // compression method (only 0 specified)

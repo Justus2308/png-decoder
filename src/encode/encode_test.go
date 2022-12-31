@@ -6,7 +6,7 @@ import (
 	"png-decoder/src/global"
 )
 
-var path = "test_images/test_24bpp.bmp"
+var path = "test_images/test_32bpp.bmp"
 
 
 func TestGetBits(t *testing.T) {
