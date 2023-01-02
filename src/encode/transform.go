@@ -46,7 +46,7 @@ func decode8Bit(data []byte, w, h, offset, bpp int, topDown bool, palette [][4]b
 		y0, y1, yDelta = 0, h, +1
 	}
 	for y := y0; y != y1; y += yDelta {
-		p := raw[y*w : y*w+w*4-(w%4)]
+		p := raw[y*w*4 : y*w*4+w*4-(w%4)]
 		bits[y] = p
 	}
 	return bits, w, h, bpp, false, nil
@@ -63,22 +63,18 @@ func decode24Bit(data []byte, w, h, offset, bpp int, topDown bool) (bits [][]byt
 		y0, y1, yDelta = 0, h, +1
 	}
 	for y := y0; y != y1; y += yDelta {
-		b := make([]byte, w*4)
 		p := raw[y*w*3 : y*w*3+w*3]
-		for i, j := 0, 0; i < len(p); i, j = i+4, j+3 {
-			b[i+0] = p[j+2]
-			b[i+1] = p[j+1]
-			b[i+2] = p[j+0]
-			b[i+3] = 0xFF
+		for i := 0; i < len(p); i += 3 {
+			p[i+0], p[i+2] = p[i+2], p[i+0]
 		}
-		bits[y] = b
+		bits[y] = p[:w*3:w*3]
 	}
 	return bits, w, h, bpp, false, nil
 }
 
 func decode32Bit(data []byte, w, h, offset, bpp int, alpha, topDown bool) (bits [][]byte, wR, hR, bppR int, alphaR bool, err error) {
 	if w == 0 || h == 0 {
-		return [][]byte{}, 0, 0, 0, alpha, nil
+		return [][]byte{}, w, h, bpp, alpha, nil
 	}
 	raw := data[offset:]
 	bits = make([][]byte, h)
@@ -94,7 +90,7 @@ func decode32Bit(data []byte, w, h, offset, bpp int, alpha, topDown bool) (bits 
 			p[i+3] = 0xFF
 			}
 		}
-		bits[y] = p
+		bits[y] = p[:w*4:w*4]
 	}
 	return bits, w, h, bpp, alpha, nil
 }

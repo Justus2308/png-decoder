@@ -39,7 +39,7 @@ func TestFilter(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filtered := Filter(&bits, w, h, bpp)
+	filtered := Filter(bits, w, h, bpp)
 	t.Log(filtered)
 }
 
@@ -55,11 +55,7 @@ func TestDeflate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defl, err := deflate(bits)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	defl := deflate(bits)
 	t.Log(defl)
 }
 
@@ -70,12 +66,8 @@ func TestChunker(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filt := Filter(&bits, w, h, bpp)
-	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	filt := Filter(bits, w, h, bpp)
+	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
 	t.Log(chunked)
 }
 
@@ -86,12 +78,8 @@ func TestCreatePng(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filt := Filter(&bits, w, h, bpp)
-	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	filt := Filter(bits, w, h, bpp)
+	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
 	err = createPng(chunked)
 	if err != nil {
 		t.Error(err)
@@ -106,15 +94,16 @@ func TestCreateUnfilteredPng(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	filt := make([][]byte, h)
+	// inter := Interlace(bits, w, h)
+	// t.Log(inter)
+	filt := make([][]byte, h, h)
 	for i := range bits {
-		filt[i] = prepend(bits[i], 0)
+		filt[i] = subFltr(bits, i, w, 4)
+		t.Log(cap(filt[i]))
+		// filt[i] = typeByte(bits[i], 0)
 	}
-	chunked, err := Chunk(filt, w, h, bpp, alpha, false, nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	t.Log(filt)
+	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
 	suffix = "_unfilt.png"
 	err = createPng(chunked)
 	if err != nil {

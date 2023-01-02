@@ -14,36 +14,25 @@ func u32toB(i uint32) []byte {
 	return b
 }
 
-func deflate(filt [][]byte) ([]byte, error) {
-	var (
-		buf bytes.Buffer
-		defl []byte
-	)
+func deflate(filt [][]byte) []byte {
+	var buf bytes.Buffer
 	w, _ := zlib.NewWriterLevel(&buf, 8)
 	for _, f := range filt {
-		_, err := bytes.NewReader(f).WriteTo(w)
-		if err != nil {
-			return nil, err
-		}
+		w.Write(f)
 		w.Flush()
-		defl = append(defl, buf.Bytes()...)
-		buf.Reset()
 	}
-	return defl, nil
+	return buf.Bytes()
 }
 
-func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) ([]byte, error) {
+func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) []byte {
 	chunked := makeIHDR(w, h, bpp, alpha, interlaced)
 	if bpp == 8 {
 		chunked = append(chunked, makePLTE(palette)...)
 	}
-	idat, err := makeIDAT(filt)
-	if err != nil {
-		return nil, err
-	}
+	idat := makeIDAT(filt)
 	chunked = append(chunked, idat...)
 	chunked = append(chunked, makeIEND()...)
-	return chunked, nil
+	return chunked
 }
 
 func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
@@ -86,16 +75,13 @@ func makePLTE(palette [][4]byte) []byte {
 	return plte
 }
 
-func makeIDAT(filt [][]byte) ([]byte, error) {
-	data, err := deflate(filt) // deflated image data stream
-	if err != nil {
-		return nil, err
-	}
+func makeIDAT(filt [][]byte) []byte {
+	data := deflate(filt) // deflated image data stream
 	idat := u32toB(uint32(len(data))) // data field length
 	idat = append(idat, []byte{73, 68, 65, 84}...) // chunk type field
 	idat = append(idat, data...) // data field
 	idat = append(idat, u32toB(crc32.ChecksumIEEE(idat[4:]))...) // crc32 checksum
-	return idat, nil
+	return idat
 }
 
 func makeIEND() []byte {
