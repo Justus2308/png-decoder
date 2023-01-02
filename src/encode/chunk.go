@@ -1,8 +1,6 @@
 package encode
 
 import (
-	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"hash/crc32"
 )
@@ -12,27 +10,6 @@ func u32toB(i uint32) []byte {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b[:4], i)
 	return b
-}
-
-func deflate(filt [][]byte) []byte {
-	var buf bytes.Buffer
-	w, _ := zlib.NewWriterLevel(&buf, 8)
-	for _, f := range filt {
-		w.Write(f)
-		w.Flush()
-	}
-	return buf.Bytes()
-}
-
-func Chunk(filt [][]byte, w, h, bpp int, alpha, interlaced bool, palette [][4]byte) []byte {
-	chunked := makeIHDR(w, h, bpp, alpha, interlaced)
-	if bpp == 8 {
-		chunked = append(chunked, makePLTE(palette)...)
-	}
-	idat := makeIDAT(filt)
-	chunked = append(chunked, idat...)
-	chunked = append(chunked, makeIEND()...)
-	return chunked
 }
 
 func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
@@ -63,7 +40,7 @@ func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
 	return ihdr
 }
 
-func makePLTE(palette [][4]byte) []byte {
+func makePLTE(palette [][]byte) []byte {
 	plte := u32toB(uint32(len(palette)*3)) // data field length
 	plte = append(plte, []byte{80, 76, 84, 69}...) // chunk type field
 	for _, p := range palette { // bmp palettes are stored in B-G-R-X format
@@ -75,8 +52,7 @@ func makePLTE(palette [][4]byte) []byte {
 	return plte
 }
 
-func makeIDAT(filt [][]byte) []byte {
-	data := deflate(filt) // deflated image data stream
+func makeIDAT(data []byte) []byte {
 	idat := u32toB(uint32(len(data))) // data field length
 	idat = append(idat, []byte{73, 68, 65, 84}...) // chunk type field
 	idat = append(idat, data...) // data field

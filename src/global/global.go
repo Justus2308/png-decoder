@@ -8,6 +8,7 @@ import (
 var (
 	path = flag.String("src", "", "src: path to the source image")
 	mode = flag.String("mode", "encode", "mode: either encode or decode\ndefault mode: encode")
+	alpha = flag.Bool("alpha", true, "alpha: enable alpha channel, if available")
 	adam7 = [][]int{
 		{1, 6, 4, 6, 2, 6, 4, 6},
 		{7, 7, 7, 7, 7, 7, 7, 7},
@@ -36,6 +37,10 @@ func Mode() (bool, error) { // true: encode ; false: decode
 	}
 }
 
+func Alpha() bool {
+	return *alpha
+}
+
 func Adam7() [][]int {
 	return adam7
 }
@@ -46,4 +51,8 @@ func SetPath(p string) { // for testing
 
 func SetMode(m string) { // for testing
 	*mode = m
+}
+
+func SetAlpha(a bool) { // for testing
+	*alpha = a
 }

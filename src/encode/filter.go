@@ -1,7 +1,6 @@
 package encode
 
 import (
-	"fmt"
 	"sort"
 
 	"png-decoder/src/paethAlg"
@@ -81,105 +80,63 @@ func typeByte(slc []byte, b byte) []byte { // empty scanlines do not get a filte
 	return slc
 }
 
-// TODO: parellelize with goroutines
-func Filter(bits [][]byte, w, h, bpp int) (filtered [][]byte) { // returns filtered row with prepended filter index
-	filtered = make([][]byte, h, h)
-	if bpp == 8 {
-		for r := 0; r < h; r++ {
-			filtered[r] = bits[r]
-			filtered[r] = typeByte(filtered[r], none)
-		}
-		return filtered
+func filter(orig, prev []byte, w, s int) []byte {
+	subF := subFltr(orig, w, s)
+	upF := upFltr(orig, prev, w, s)
+	averageF := averageFltr(orig, prev, w, s)
+	paethF := paethFltr(orig, prev, w, s)
+	switch lowestScoreID(orig, subF, upF, averageF, paethF) {
+	case none:
+		return typeByte(orig, none)
+	case sub:
+		return typeByte(subF, sub)
+	case up:
+		return typeByte(upF, up)
+	case average:
+		return typeByte(averageF, average)
+	case paeth:
+		return typeByte(paethF, paeth)
 	}
-	var s int
-	if bpp == 24 {
-		s = 3
-	} else {
-		s = 4
-	}
-	for r := 0; r < h; r++ {
-		subF := subFltr(bits, r, w, s)
-		upF := upFltr(bits, r, w, s)
-		averageF := averageFltr(bits, r, w, s)
-		paethF := paethFltr(bits, r, w, s)
-		switch lowestScoreID(bits[r], subF, upF, averageF, paethF) {
-		case none:
-			filtered[r] = bits[r]
-			filtered[r] = typeByte(filtered[r], none)
-			fmt.Println(none)
-		case sub:
-			filtered[r] = subF
-			filtered[r] = typeByte(filtered[r], sub)
-			fmt.Println(sub)
-		case up:
-			filtered[r] = upF
-			filtered[r] = typeByte(filtered[r], up)
-			fmt.Println(up)
-		case average:
-			filtered[r] = averageF
-			filtered[r] = typeByte(filtered[r], average)
-			fmt.Println(average)
-		case paeth:
-			filtered[r] = paethF
-			filtered[r] = typeByte(filtered[r], paeth)
-			fmt.Println(paeth)
-		}
-	}
-	return filtered
+	return nil
 }
 
-func subFltr(orig [][]byte, r, w, s int) []byte {
+func subFltr(orig []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
-		filt[i] = orig[r][i]
+		filt[i] = orig[i]
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[r][i] - orig[r][i-s]
+		filt[i] = orig[i] - orig[i-s]
 	}
 	return filt
 }
 
-func upFltr(orig [][]byte, r, w, s int) []byte {
-	if r == 0 {
-		return orig[r]
-	}
+func upFltr(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < w*s; i++ {
-		filt[i] = orig[r][i] - orig[r-1][i]
+		filt[i] = orig[i] - prev[i]
 	}
 	return filt
 }
 
-func averageFltr(orig [][]byte, r, w, s int) []byte {
-	var prev []byte
-	if r == 0 {
-		prev = make([]byte, w*s, w*s)
-	} else {
-		prev = orig[r-1]
-	}
+func averageFltr(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
-		filt[i] = orig[r][i] - (prev[i] / 2)
+		filt[i] = orig[i] - (prev[i] / 2)
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[r][i] - uint8((uint16(orig[r][i-s]) + uint16(prev[i])) / 2)
+		filt[i] = orig[i] - uint8((uint16(orig[i-s]) + uint16(prev[i])) / 2)
 	}
 	return filt
 }
 
-func paethFltr(orig [][]byte, r, w, s int) []byte {
-	var prev []byte
-	if r == 0 {
-		prev = make([]byte, w*s, w*s)
-	} else {
-		prev = orig[r-1]
-	}
+func paethFltr(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
-		filt[i] = orig[r][i] - paethAlg.PaethPred(0, prev[i], 0)
+		filt[i] = orig[i] - paethAlg.PaethPred(0, prev[i], 0)
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[r][i] - paethAlg.PaethPred(orig[r][i-1], prev[i], prev[i-1])
+		filt[i] = orig[i] - paethAlg.PaethPred(orig[i-1], prev[i], prev[i-1])
 	}
 	return filt
 }

@@ -1,6 +1,10 @@
 package encode
 
 import (
+	"bytes"
+	"compress/zlib"
+	"os"
+	"strings"
 	"testing"
 
 	"png-decoder/src/global"
@@ -9,105 +13,78 @@ import (
 var path = "test_images/test_32bpp.bmp"
 
 
-func TestGetBits(t *testing.T) {
-	global.SetPath(path)
-	transformed, _, _, bpp, _, err := GetBits()
-	t.Log("depth:", bpp)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	t.Log(transformed)
-}
-
-func TestMinAbsDiff(t *testing.T) {
-	global.SetPath(path)
-	bitsT, _, _, _, _, err := GetBits()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	for _, v := range bitsT {
-		t.Log(minAbsDiff(v))
-	}
-}
-
-func TestFilter(t *testing.T) {
-	global.SetPath(path)
-	bits, w, h, bpp, _, err := GetBits()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	filtered := Filter(bits, w, h, bpp)
-	t.Log(filtered)
-}
-
 func TestIHDR(t *testing.T) {
 	ihdr := makeIHDR(600, 750, 32, true, false)
 	t.Log(ihdr)
 }
 
-func TestDeflate(t *testing.T) {
+func TestEncode(t *testing.T) {
 	global.SetPath(path)
-	bits, _, _, _, _, err := GetBits()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defl := deflate(bits)
-	t.Log(defl)
+	Encode()
 }
 
-func TestChunker(t *testing.T) {
+func TestCreateUnfilteredPng(t *testing.T) { // works for 24 and 32 bpp
 	global.SetPath(path)
-	bits, w, h, bpp, alpha, err := GetBits()
+	bmp, err := os.Open(global.Path())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	filt := Filter(bits, w, h, bpp)
-	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
-	t.Log(chunked)
-}
-
-func TestCreatePng(t *testing.T) {
-	global.SetPath(path)
-	bits, w, h, bpp, alpha, err := GetBits()
+	defer bmp.Close()
+	w, h, bpp, alpha, topDown, _, err := decodeHeader(bmp)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	filt := Filter(bits, w, h, bpp)
-	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
-	err = createPng(chunked)
+	if w == 0 || h == 0 {
+		t.Error("file contains no pixels")
+		return
+	}
+	if alpha {
+		alpha = global.Alpha()
+	}
+	trgt := strings.TrimSuffix(global.Path(), ".bmp")
+	png, err := os.Create(trgt+"_unfilt.png")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-}
-
-func TestCreateUnfilteredPng(t *testing.T) {
-	global.SetPath(path)
-	bits, w, h, bpp, alpha, err := GetBits()
-	if err != nil {
-		t.Error(err)
-		return
+	defer png.Close()
+	png.Write(magicNumbers)
+	png.Write(makeIHDR(w, h, bpp, alpha, false))
+	// decodeImgData
+	var buf bytes.Buffer
+	z, _ := zlib.NewWriterLevel(&buf, 8)
+	y0, y1, yDelta := h-1, -1, -1
+	if topDown {
+		y0, y1, yDelta = 0, h, +1
 	}
-	// inter := Interlace(bits, w, h)
-	// t.Log(inter)
-	filt := make([][]byte, h, h)
-	for i := range bits {
-		filt[i] = subFltr(bits, i, w, 4)
-		t.Log(cap(filt[i]))
-		// filt[i] = typeByte(bits[i], 0)
+	s := bpp / 8
+	for y := y0; y != y1; y += yDelta {
+		line, err := scanLine(bmp, w, s)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		for x := 0; x < w*s; x += s {
+			line[x+0], line[x+2] = line[x+2], line[x+0]
+			if s == 4 && !alpha {
+				line[x+3] = 0xFF
+			}
+		}
+		filt := typeByte(line, none)
+		t.Log(y, len(filt), filt)
+		z.Write(filt)
+		z.Flush()
+		data := buf.Bytes()
+		buf.Reset()
+		t.Log(data)
+		b, err := png.Write(makeIDAT(data))
+		t.Log(b)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 	}
-	t.Log(filt)
-	chunked := Chunk(filt, w, h, bpp, alpha, false, nil)
-	suffix = "_unfilt.png"
-	err = createPng(chunked)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	png.Write(makeIEND())
 }
