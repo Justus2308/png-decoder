@@ -6,15 +6,13 @@ func PaethPred(a, b, c byte) byte {
 	pa := absU8(p - int16(a))
 	pb := absU8(p - int16(b))
 	pc := absU8(p - int16(c))
-	var pr byte
 	if pa <= pb && pa <= pc {
-		pr = a
+		return a
 	} else if pb <= pc {
-		pr = b
+		return b
 	} else {
-		pr = c
+		return c
 	}
-	return pr
 }
 
 func absU8(i int16) uint8 {

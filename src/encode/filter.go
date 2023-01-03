@@ -16,7 +16,8 @@ const (
 
 
 func sortSlc(row []byte) []byte {
-	sorted := row
+	sorted := make([]byte, len(row))
+	copy(sorted, row)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i] < sorted[j]
 	})
@@ -136,7 +137,7 @@ func paethFltr(orig, prev []byte, w, s int) []byte {
 		filt[i] = orig[i] - paethAlg.PaethPred(0, prev[i], 0)
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - paethAlg.PaethPred(orig[i-1], prev[i], prev[i-1])
+		filt[i] = orig[i] - paethAlg.PaethPred(orig[i-s], prev[i], prev[i-s])
 	}
 	return filt
 }

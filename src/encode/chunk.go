@@ -3,6 +3,8 @@ package encode
 import (
 	"encoding/binary"
 	"hash/crc32"
+
+	"png-decoder/src/global"
 )
 
 
@@ -14,7 +16,7 @@ func u32toB(i uint32) []byte {
 
 func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
 	ihdr := u32toB(uint32(13)) // data field length
-	ihdr = append(ihdr, []byte{73, 72, 68, 82}...) // chunk type field
+	ihdr = append(ihdr, global.IHDR...) // chunk type field
 	ihdr = append(ihdr, u32toB(uint32(w))...) // width in 4 bits
 	ihdr = append(ihdr, u32toB(uint32(h))...) // height in 4 bits
 	switch bpp { // sample depth + colour type, only supports indexed-colour, truecolour and truecolour+alpha
@@ -40,28 +42,25 @@ func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
 	return ihdr
 }
 
-func makePLTE(palette [][]byte) []byte {
-	plte := u32toB(uint32(len(palette)*3)) // data field length
-	plte = append(plte, []byte{80, 76, 84, 69}...) // chunk type field
-	for _, p := range palette { // bmp palettes are stored in B-G-R-X format
-		plte = append(plte, p[2]) // R
-		plte = append(plte, p[1]) // G
-		plte = append(plte, p[0]) // B
-	}
+func makePLTE(palette []byte) []byte {
+	plte := u32toB(uint32(len(palette))) // data field length
+	plte = append(plte, global.PLTE...) // chunk type field
+	plte = append(plte, palette...) // data field
 	plte = append(plte, u32toB(crc32.ChecksumIEEE(plte[4:]))...) // crc32 checksum
 	return plte
 }
 
 func makeIDAT(data []byte) []byte {
 	idat := u32toB(uint32(len(data))) // data field length
-	idat = append(idat, []byte{73, 68, 65, 84}...) // chunk type field
+	idat = append(idat, global.IDAT...) // chunk type field
 	idat = append(idat, data...) // data field
 	idat = append(idat, u32toB(crc32.ChecksumIEEE(idat[4:]))...) // crc32 checksum
 	return idat
 }
 
 func makeIEND() []byte {
-	iend := []byte{0x00, 0x00, 0x00, 0x00, 73, 69, 78, 68} // data field length + chunk type field
+	iend := []byte{0x00, 0x00, 0x00, 0x00} // data field length
+	iend = append(iend, global.IEND...) // chunk type field
 	iend = append(iend, u32toB(crc32.ChecksumIEEE(iend[4:]))...) // crc32 checksum
 	return iend
 }

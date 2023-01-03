@@ -11,7 +11,7 @@ import (
 
 
 var (
-	magicNumbers = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	suffix = "_enc.png"
 )
 
 
@@ -21,7 +21,7 @@ func Encode() {
 		panic(err)
 	}
 	defer bmp.Close()
-	w, h, bpp, alpha, topDown, fileInfoLen, err := decodeHeader(bmp)
+	w, h, bpp, alpha, topDown, err := decodeHeader(bmp)
 	if err != nil {
 		panic(err)
 	}
@@ -32,16 +32,24 @@ func Encode() {
 		alpha = global.Alpha()
 	}
 	trgt := strings.TrimSuffix(global.Path(), ".bmp")
-	png, err := os.Create(trgt+"_enc.png")
+	png, err := os.Create(trgt+suffix)
 	if err != nil {
 		panic(err)
 	}
 	defer png.Close()
-	png.Write(magicNumbers)
+	png.Write(global.PNG) // magic numbers
 	png.Write(makeIHDR(w, h, bpp, alpha, false))
 	switch bpp {
 	case 8:
-		fileInfoLen = fileInfoLen
+		plte, err := getPalette(bmp)
+		if err != nil {
+			panic(err)
+		}
+		png.Write(makePLTE(plte))
+		if err = decode8BitData(bmp, png, w, h, topDown); err != nil {
+			panic(err)
+		}
+		png.Write(makeIEND())
 	case 24:
 		if err = decodeImgData(bmp, png, w, h, 3, false, topDown); err != nil {
 			panic(err)
@@ -57,8 +65,31 @@ func Encode() {
 	}
 }
 
-// BUG: same zlib writer has to be used for all image data
-// or the stream will be ended preemptively at the first adler32 chunk
+func decode8BitData(bmp, png *os.File, w, h int, topDown bool) error {
+	var buf bytes.Buffer
+	z, _ := zlib.NewWriterLevel(&buf, 8)
+	y0, y1, yDelta := h-1, -1, -1
+	if topDown {
+		y0, y1, yDelta = 0, h, +1
+	}
+	for y := y0; y != y1; y += yDelta {
+		line, err := scanLine(bmp, w, 1)
+		if err != nil {
+			return err
+		}
+		filt := typeByte(line, none)
+		z.Write(filt) // deflate
+		z.Flush()
+		data := buf.Bytes()
+		buf.Reset()
+		_, err = png.Write(makeIDAT(data))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func decodeImgData(bmp, png *os.File, w, h, s int, alpha, topDown bool) error {
 	prev := make([]byte, w*s, w*s)
 	var buf bytes.Buffer
@@ -77,9 +108,6 @@ func decodeImgData(bmp, png *os.File, w, h, s int, alpha, topDown bool) error {
 			if s == 4 && !alpha {
 				line[x+3] = 0xFF
 			}
-		}
-		if err != nil {
-			return err
 		}
 		filt := filter(line, prev, w, s)
 		prev = line

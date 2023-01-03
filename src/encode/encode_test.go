@@ -10,20 +10,15 @@ import (
 	"png-decoder/src/global"
 )
 
-var path = "test_images/test_32bpp.bmp"
+var path = "test_images/test_8bpp.bmp"
 
-
-func TestIHDR(t *testing.T) {
-	ihdr := makeIHDR(600, 750, 32, true, false)
-	t.Log(ihdr)
-}
 
 func TestEncode(t *testing.T) {
 	global.SetPath(path)
 	Encode()
 }
 
-func TestCreateUnfilteredPng(t *testing.T) { // works for 24 and 32 bpp
+func TestEncodeUnfiltered(t *testing.T) { // works for 24 and 32 bpp
 	global.SetPath(path)
 	bmp, err := os.Open(global.Path())
 	if err != nil {
@@ -31,9 +26,13 @@ func TestCreateUnfilteredPng(t *testing.T) { // works for 24 and 32 bpp
 		return
 	}
 	defer bmp.Close()
-	w, h, bpp, alpha, topDown, _, err := decodeHeader(bmp)
+	w, h, bpp, alpha, topDown, err := decodeHeader(bmp)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	if bpp == 8 {
+		t.Log("test does not work for 8bpp bmp images")
 		return
 	}
 	if w == 0 || h == 0 {
@@ -50,16 +49,16 @@ func TestCreateUnfilteredPng(t *testing.T) { // works for 24 and 32 bpp
 		return
 	}
 	defer png.Close()
-	png.Write(magicNumbers)
+	png.Write(global.PNG)
 	png.Write(makeIHDR(w, h, bpp, alpha, false))
 	// decodeImgData
+	s := bpp / 8
 	var buf bytes.Buffer
 	z, _ := zlib.NewWriterLevel(&buf, 8)
 	y0, y1, yDelta := h-1, -1, -1
 	if topDown {
 		y0, y1, yDelta = 0, h, +1
 	}
-	s := bpp / 8
 	for y := y0; y != y1; y += yDelta {
 		line, err := scanLine(bmp, w, s)
 		if err != nil {
@@ -87,4 +86,11 @@ func TestCreateUnfilteredPng(t *testing.T) { // works for 24 and 32 bpp
 		}
 	}
 	png.Write(makeIEND())
+}
+
+func TestEncodeInterlaced(t *testing.T) {
+	global.SetPath(path)
+	global.SetInterlaced(true)
+	suffix = "_inter.png"
+	Encode()
 }
