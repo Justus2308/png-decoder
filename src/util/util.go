@@ -3,21 +3,32 @@ package util
 import "encoding/binary"
 
 
-func BToU16(b []byte) uint16 {
+// ...Big: Big-Endian (Network) byte order
+// ...Lit: Little-Endian byte order
+
+func BToU16Big(b []byte) uint16 {
+	return uint16(b[0])<<8 | uint16(b[1])
+}
+
+func BToU32Big(b []byte) uint32 {
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
+}
+
+func BToU16Lit(b []byte) uint16 {
 	return uint16(b[0]) | uint16(b[1])<<8
 }
 
-func BToU32(b []byte) uint32 {
+func BToU32Lit(b []byte) uint32 {
 	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 }
 
-func U16toB(i uint16) []byte {
+func U16toBBig(i uint16) []byte {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b[:2], i)
 	return b
 }
 
-func U32toB(i uint32) []byte {
+func U32toBBig(i uint32) []byte {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b[:4], i)
 	return b

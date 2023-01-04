@@ -16,38 +16,44 @@ var (
 	errIEND = errors.New("internal: reached IEND chunk")
 )
 
-
+// TODO: support gAMA chunk
 func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
 	const (
 		ihdrLen = 13
 	)
-	head := make([]byte, 25)
-	if _, err := png.Read(head[:4+4+ihdrLen+4]); err != nil {
+	head := make([]byte, 33)
+	if _, err := png.Read(head[:8+4+4+ihdrLen+4]); err != nil {
 		if err == io.EOF {
 			err = global.ErrTransmission
 		}
 		return 0, 0, 0, false, false, err
 	}
-	if !bytes.Equal(head[:4], global.PNG) { // BUG: png header is longer than 4 bytes...
+	if !bytes.Equal(head[:4], global.PNG[:4]) {
 		return 0, 0, 0, false, false, global.ErrUnsupported
 	}
-	if !bytes.Equal(head[4 : 4+4], util.U32toB(ihdrLen)) {
-		return 0, 0, 0, false, false, global.ErrSyntax
-	}
-	checksum := util.U32toB(crc32.ChecksumIEEE(head[4 : 4+4+ihdrLen]))
-	if !bytes.Equal(head[4+4+ihdrLen : 4+4+ihdrLen+4], checksum) {
+	if !bytes.Equal(head[4:8], global.PNG[4:8]) {
 		return 0, 0, 0, false, false, global.ErrTransmission
 	}
-	width, height := int(int32(util.BToU32(head[8:12]))), int(int32(util.BToU32(head[12:16])))
-	bps, colType := head[17], head[18]
+	if !bytes.Equal(head[8 : 8+4], util.U32toBBig(ihdrLen)) {
+		return 0, 0, 0, false, false, global.ErrTransmission
+	}
+	if !bytes.Equal(head[8+4 : 8+4+4], global.IHDR) {
+		return 0, 0, 0, false, false, global.ErrSyntax
+	}
+	checksum := util.U32toBBig(crc32.ChecksumIEEE(head[8+4 : 8+4+4+ihdrLen]))
+	if !bytes.Equal(head[8+4+4+ihdrLen : 8+4+4+ihdrLen+4], checksum) {
+		return 0, 0, 0, false, false, global.ErrTransmission
+	}
+	width, height := int(int32(util.BToU32Big(head[16:20]))), int(int32(util.BToU32Big(head[20:24])))
+	bps, colType := head[24], head[25]
 	if bps != 8 {
 		return 0, 0, 0, false, false, errors.New("unsupported bit depth")
 	}
-	compMet, filtMet := head[19], head[20]
+	compMet, filtMet := head[26], head[27]
 	if compMet != 0 || filtMet != 0 {
 		return 0, 0, 0, false, false, global.ErrUnsupported
 	}
-	interlaced := head[21]
+	interlaced := head[28]
 	switch interlaced {
 	case 0:
 		inter = false
@@ -73,7 +79,7 @@ func decodePLTE(png *os.File) (plte []byte, err error) {
 	if err == io.EOF {
 		return nil, global.ErrTransmission
 	}
-	plteLen := util.BToU32(len)
+	plteLen := util.BToU32Big(len)
 	plte = make([]byte, 4+plteLen+4)
 	_, err = png.Read(plte[:4])
 	if err == io.EOF {
@@ -87,7 +93,7 @@ func decodePLTE(png *os.File) (plte []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toB(crc32.ChecksumIEEE(plte[:plteLen-4]))
+		checksum := util.U32toBBig(crc32.ChecksumIEEE(plte[:plteLen-4]))
 		if !bytes.Equal(plte[plteLen-4:], checksum) {
 			return nil, global.ErrTransmission
 		}
@@ -102,7 +108,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if err == io.EOF {
 		return nil, global.ErrTransmission
 	}
-	dataLen := util.BToU32(len)
+	dataLen := util.BToU32Big(len)
 	data = make([]byte, 4+dataLen+4)
 	_, err = png.Read(data[:4])
 	if err == io.EOF {
@@ -114,7 +120,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toB(crc32.ChecksumIEEE(data[:dataLen-4]))
+		checksum := util.U32toBBig(crc32.ChecksumIEEE(data[:dataLen-4]))
 		if !bytes.Equal(data[dataLen-4:], checksum) {
 			return nil, global.ErrTransmission
 		}
@@ -124,7 +130,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toB(crc32.ChecksumIEEE(data[:4]))
+		checksum := util.U32toBBig(crc32.ChecksumIEEE(data[:4]))
 		if dataLen == 0 && bytes.Equal(data[4:], checksum) {
 			return nil, errIEND
 		}

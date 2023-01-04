@@ -22,13 +22,14 @@ func Decode() {
 		panic(err)
 	}
 	defer png.Close()
-	w, h, bpp, /*alpha, inter,*/_, _, err := decodeIHDR(png)
+	w, h, bpp, alpha, inter, err := decodeIHDR(png)
 	if err != nil {
 		panic(err)
 	}
 	if w == 0 || h == 0 {
 		panic("file contains no pixels")
 	}
+	log.Println(w, h, bpp, alpha, inter)
 	if bpp == 8 {
 		/*plte*/_, err := decodePLTE(png)
 		if err != nil {
@@ -47,7 +48,7 @@ func Decode() {
 			panic(err)
 		}
 	}
-	linkedIdat.InsertAfter(idat, linkedIdat.Back())
+	linkedIdat.PushFront(idat)
 	for {
 		nextIdat, err := decodeIDAT(png)
 		if err != nil {

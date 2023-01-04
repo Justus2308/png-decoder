@@ -11,10 +11,10 @@ import (
 
 
 func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
-	ihdr := util.U32toB(uint32(13)) // data field length
+	ihdr := util.U32toBBig(uint32(13)) // data field length
 	ihdr = append(ihdr, global.IHDR...) // chunk type field
-	ihdr = append(ihdr, util.U32toB(uint32(w))...) // width in 4 bits
-	ihdr = append(ihdr, util.U32toB(uint32(h))...) // height in 4 bits
+	ihdr = append(ihdr, util.U32toBBig(uint32(w))...) // width in 4 bits
+	ihdr = append(ihdr, util.U32toBBig(uint32(h))...) // height in 4 bits
 	switch bpp { // sample depth + colour type, only supports indexed-colour, truecolour and truecolour+alpha
 	case 8:
 		ihdr = append(ihdr, []byte{8, 3}...)
@@ -34,29 +34,29 @@ func makeIHDR(w, h, bpp int, alpha, interlaced bool) []byte {
 	} else {
 		ihdr = append(ihdr, 0)
 	}
-	ihdr = append(ihdr, util.U32toB(crc32.ChecksumIEEE(ihdr[4:]))...) // crc32 checksum
+	ihdr = append(ihdr, util.U32toBBig(crc32.ChecksumIEEE(ihdr[4:]))...) // crc32 checksum
 	return ihdr
 }
 
 func makePLTE(palette []byte) []byte {
-	plte := util.U32toB(uint32(len(palette))) // data field length
+	plte := util.U32toBBig(uint32(len(palette))) // data field length
 	plte = append(plte, global.PLTE...) // chunk type field
 	plte = append(plte, palette...) // data field
-	plte = append(plte, util.U32toB(crc32.ChecksumIEEE(plte[4:]))...) // crc32 checksum
+	plte = append(plte, util.U32toBBig(crc32.ChecksumIEEE(plte[4:]))...) // crc32 checksum
 	return plte
 }
 
 func makeIDAT(data []byte) []byte {
-	idat := util.U32toB(uint32(len(data))) // data field length
+	idat := util.U32toBBig(uint32(len(data))) // data field length
 	idat = append(idat, global.IDAT...) // chunk type field
 	idat = append(idat, data...) // data field
-	idat = append(idat, util.U32toB(crc32.ChecksumIEEE(idat[4:]))...) // crc32 checksum
+	idat = append(idat, util.U32toBBig(crc32.ChecksumIEEE(idat[4:]))...) // crc32 checksum
 	return idat
 }
 
 func makeIEND() []byte {
 	iend := []byte{0x00, 0x00, 0x00, 0x00} // data field length
 	iend = append(iend, global.IEND...) // chunk type field
-	iend = append(iend, util.U32toB(crc32.ChecksumIEEE(iend[4:]))...) // crc32 checksum
+	iend = append(iend, util.U32toBBig(crc32.ChecksumIEEE(iend[4:]))...) // crc32 checksum
 	return iend
 }
