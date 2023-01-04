@@ -17,7 +17,7 @@ var (
 )
 
 
-func decodeHeader(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
+func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
 	const (
 		ihdrLen = 13
 	)
@@ -67,7 +67,7 @@ func decodeHeader(png *os.File) (w, h, depth int, alpha, inter bool, err error) 
 	return 0, 0, 0, false, false, errors.New("unsupported colour type")
 }
 
-func scanPLTE(png *os.File) (plte []byte, err error) {
+func decodePLTE(png *os.File) (plte []byte, err error) {
 	len := make([]byte, 4)
 	_, err = png.Read(len)
 	if err == io.EOF {
@@ -96,7 +96,7 @@ func scanPLTE(png *os.File) (plte []byte, err error) {
 	return nil, global.ErrSyntax
 }
 
-func scanIDAT(png *os.File) (data []byte, err error) {
+func decodeIDAT(png *os.File) (data []byte, err error) {
 	len := make([]byte, 4)
 	_, err = png.Read(len)
 	if err == io.EOF {
