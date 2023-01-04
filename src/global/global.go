@@ -12,6 +12,12 @@ var ( // flags
 	inter = flag.Bool("inter", false, "inter: enable adam7-interlacing\ndefault value: false")
 )
 
+var ( // errors
+	ErrUnsupported = errors.New("unsupported format")
+	ErrTransmission = errors.New("faulty transmission")
+	ErrSyntax = errors.New("syntax error")
+)
+
 var ( // interlacing pattern
 	Adam7 = [][]int{
 		{1, 6, 4, 6, 2, 6, 4, 6},
@@ -26,6 +32,7 @@ var ( // interlacing pattern
 )
 
 var ( // magic numbers
+	BMP = []byte{0x42, 0x4D}
 	PNG = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 	IHDR = []byte{73, 72, 68, 82}
 	PLTE = []byte{80, 76, 84, 69}

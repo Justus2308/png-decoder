@@ -62,7 +62,7 @@ func Encode() {
 		}
 		png.Write(makeIEND())
 	default:
-		panic(errUnsupported)
+		panic(global.ErrUnsupported)
 	}
 }
 

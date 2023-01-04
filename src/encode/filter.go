@@ -3,7 +3,7 @@ package encode
 import (
 	"sort"
 
-	"png-decoder/src/paethAlg"
+	"png-decoder/src/util"
 )
 
 const (
@@ -134,10 +134,10 @@ func averageFltr(orig, prev []byte, w, s int) []byte {
 func paethFltr(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
-		filt[i] = orig[i] - paethAlg.PaethPred(0, prev[i], 0)
+		filt[i] = orig[i] - util.PaethPred(0, prev[i], 0)
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - paethAlg.PaethPred(orig[i-s], prev[i], prev[i-s])
+		filt[i] = orig[i] - util.PaethPred(orig[i-s], prev[i], prev[i-s])
 	}
 	return filt
 }
