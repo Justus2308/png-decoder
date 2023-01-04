@@ -3,6 +3,7 @@ package decode
 import (
 	"bytes"
 	"compress/zlib"
+	"container/list"
 	"io"
 	"log"
 	"os"
@@ -21,7 +22,7 @@ func Decode() {
 		panic(err)
 	}
 	defer png.Close()
-	w, h, bpp, alpha, inter, err := decodeIHDR(png)
+	w, h, bpp, /*alpha, inter,*/_, _, err := decodeIHDR(png)
 	if err != nil {
 		panic(err)
 	}
@@ -29,17 +30,24 @@ func Decode() {
 		panic("file contains no pixels")
 	}
 	if bpp == 8 {
-		plte, err := decodePLTE(png)
+		/*plte*/_, err := decodePLTE(png)
 		if err != nil {
 			panic(err)
 		}
 	}
+	linkedIdat := list.New()
 	idat, err := decodeIDAT(png)
 	if err != nil {
 		if err == errIEND {
 			panic(global.ErrSyntax)
 		}
+		if err == errUnknownAncChunk {
+			log.Println("warning: file contains unsupported ancilliary chunk")
+		} else {
+			panic(err)
+		}
 	}
+	linkedIdat.InsertAfter(idat, linkedIdat.Back())
 	for {
 		nextIdat, err := decodeIDAT(png)
 		if err != nil {
@@ -52,10 +60,14 @@ func Decode() {
 			}
 			panic(err)
 		}
-		idat = append(idat, nextIdat...)
+		linkedIdat.InsertAfter(nextIdat, linkedIdat.Back())
+	}
+	var readers []io.Reader
+	for e := linkedIdat.Front(); e != nil; e = e.Next() {
+		readers = append(readers, bytes.NewReader(e.Value.([]byte)))
 	}
 	s := bpp / 8
-	r := bytes.NewReader(idat)
+	r := io.MultiReader(readers...)
 	z, err := zlib.NewReader(r)
 	if err != nil {
 		panic(err)
@@ -73,4 +85,5 @@ func Decode() {
 		}
 		inflated[i] = line
 	}
+	log.Println(inflated)
 }

@@ -28,7 +28,7 @@ func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
 		}
 		return 0, 0, 0, false, false, err
 	}
-	if !bytes.Equal(head[:4], global.PNG) {
+	if !bytes.Equal(head[:4], global.PNG) { // BUG: png header is longer than 4 bytes...
 		return 0, 0, 0, false, false, global.ErrUnsupported
 	}
 	if !bytes.Equal(head[4 : 4+4], util.U32toB(ihdrLen)) {
