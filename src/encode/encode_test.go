@@ -10,7 +10,7 @@ import (
 	"png-decoder/src/global"
 )
 
-var path = "test_images/test_8bpp.bmp"
+var path = "test_images/test_32bpp_transp.bmp"
 
 
 func TestEncode(t *testing.T) {

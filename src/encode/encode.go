@@ -15,6 +15,7 @@ var (
 )
 
 
+// TODO: implement adam7 interlacing
 func Encode() {
 	bmp, err := os.Open(global.Path())
 	if err != nil {
