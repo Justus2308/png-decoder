@@ -34,6 +34,18 @@ func U32toBBig(i uint32) []byte {
 	return b
 }
 
+func U16toBLit(i uint16) []byte {
+	b := make([]byte, 2)
+	binary.LittleEndian.PutUint16(b[:2], i)
+	return b
+}
+
+func U32toBLit(i uint32) []byte {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b[:4], i)
+	return b
+}
+
 func PaethPred(a, b, c byte) byte {
 	p := int16(a) + int16(b) - int16(c)
 	pa := absU8(p - int16(a))
