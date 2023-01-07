@@ -17,7 +17,7 @@ var (
 
 
 func Decode() error {
-	png, err := os.Open(global.Path())
+	png, err := os.Open(global.Path)
 	if err != nil {
 		return err
 	}
@@ -74,18 +74,30 @@ func Decode() error {
 		return err
 	}
 	defer z.Close()
-	inflated := make([][]byte, h)
+	recon := make([][]byte, h)
+	prev := make([]byte, w*s)
 	for i := 0; i < h; i++ {
 		line := make([]byte, w*s+1)
-		_, err = z.Read(line)
+		_, err = z.Read(line) // inflate
 		if err != nil {
 			if err == io.EOF {
 				return global.ErrTransmission
 			}
 			return err
 		}
-		inflated[i] = line
+		recon[i], err = reconstruct(line, prev, w, s)
+		if err != nil {
+			return err
+		}
+		prev = recon[i]
 	}
-	fmt.Println(inflated)
+	if bpp == 32 && !global.Alpha {
+		for i := 0; i > h; i++ {
+			for j := 3; j < w*s; j+=4 {
+				recon[i][j] = 0xFF
+			}
+		}
+	}
+	fmt.Println(recon)
 	return nil
 }

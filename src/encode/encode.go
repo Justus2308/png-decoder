@@ -17,7 +17,7 @@ var (
 
 // TODO: implement adam7 interlacing
 func Encode() error {
-	bmp, err := os.Open(global.Path())
+	bmp, err := os.Open(global.Path)
 	if err != nil {
 		return err
 	}
@@ -30,9 +30,9 @@ func Encode() error {
 		return global.ErrNoPixels
 	}
 	if alpha {
-		alpha = global.Alpha()
+		alpha = global.Alpha
 	}
-	trgt := strings.TrimSuffix(global.Path(), ".bmp")
+	trgt := strings.TrimSuffix(global.Path, ".bmp")
 	png, err := os.Create(trgt+suffix)
 	if err != nil {
 		return err

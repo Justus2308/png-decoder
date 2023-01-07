@@ -5,9 +5,9 @@ import (
 )
 
 var ( // settings
-	path = ""
-	alpha = true
-	inter = false
+	Path = ""
+	Alpha = true
+	Inter = false
 )
 
 var ( // errors
@@ -40,33 +40,8 @@ var ( // magic numbers
 )
 
 
-func Path() string {
-	return path
-}
-
-func Alpha() bool {
-	return alpha
-}
-
-func Interlaced() bool {
-	return inter
-}
-
-
-func SetPath(p string) {
-	path = p
-}
-
-func SetAlpha(a bool) {
-	alpha = a
-}
-
-func SetInterlaced(i bool) {
-	inter = i
-}
-
 func Reset() {
-	SetPath("")
-	SetAlpha(true)
-	SetInterlaced(false)
+	Path = ""
+	Alpha = true
+	Inter = false
 }

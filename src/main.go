@@ -60,7 +60,7 @@ func main() {
 			}
 			tokens[1] = strings.TrimPrefix(tokens[1], "\"")
 			tokens[1] = strings.TrimSuffix(tokens[1], "\"")
-			global.SetPath(tokens[1])
+			global.Path = tokens[1]
 			err = encode.Encode()
 			global.Reset()
 			if err != nil {
@@ -77,7 +77,7 @@ func main() {
 			}
 			tokens[1] = strings.TrimPrefix(tokens[1], "\"")
 			tokens[1] = strings.TrimSuffix(tokens[1], "\"")
-			global.SetPath(tokens[1])
+			global.Path = tokens[1]
 			err = decode.Decode()
 			global.Reset()
 			if err != nil {
@@ -110,18 +110,18 @@ func analyzeFlags(enc bool, flags... string) error {
 		case strings.Compare("-inter", parts[0]) == 0 && enc:
 			switch {
 			case strings.Compare("true", parts[1]) == 0:
-				global.SetInterlaced(true)
+				global.Inter = true
 			case strings.Compare("false", parts[1]) == 0:
-				global.SetInterlaced(false)
+				global.Inter = false
 			default:
 				return errInvalidFlags
 			}
 		case strings.Compare("-alpha", parts[0]) == 0:
 			switch {
 			case strings.Compare("true", parts[1]) == 0:
-				global.SetAlpha(true)
+				global.Alpha = true
 			case strings.Compare("false", parts[1]) == 0:
-				global.SetAlpha(false)
+				global.Alpha = false
 			default:
 				return errInvalidFlags
 			}

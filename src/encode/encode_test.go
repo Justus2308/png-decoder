@@ -14,7 +14,7 @@ var path = "test_images/test_32bpp_transp.bmp"
 
 
 func TestEncode(t *testing.T) {
-	global.SetPath(path)
+	global.Path = path
 	err := Encode()
 	if err != nil {
 		t.Error(err)
@@ -23,8 +23,8 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeUnfiltered(t *testing.T) { // works for 24 and 32 bpp
-	global.SetPath(path)
-	bmp, err := os.Open(global.Path())
+	global.Path = path
+	bmp, err := os.Open(global.Path)
 	if err != nil {
 		t.Error(err)
 		return
@@ -44,9 +44,9 @@ func TestEncodeUnfiltered(t *testing.T) { // works for 24 and 32 bpp
 		return
 	}
 	if alpha {
-		alpha = global.Alpha()
+		alpha = global.Alpha
 	}
-	trgt := strings.TrimSuffix(global.Path(), ".bmp")
+	trgt := strings.TrimSuffix(global.Path, ".bmp")
 	png, err := os.Create(trgt+"_unfilt.png")
 	if err != nil {
 		t.Error(err)
@@ -93,8 +93,8 @@ func TestEncodeUnfiltered(t *testing.T) { // works for 24 and 32 bpp
 }
 
 func TestEncodeInterlaced(t *testing.T) {
-	global.SetPath(path)
-	global.SetInterlaced(true)
+	global.Path = path
+	global.Inter = true
 	suffix = "_inter.png"
 	err := Encode()
 	if err != nil {

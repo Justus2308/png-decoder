@@ -48,7 +48,7 @@ func decodeIHDR(png *os.File) (w, h, depth int, inter bool, err error) {
 	width, height := int(int32(utils.BToU32Big(head[16:20]))), int(int32(utils.BToU32Big(head[20:24])))
 	bps, colType := head[24], head[25]
 	if bps != 8 {
-		return 0, 0, 0, false, errors.New("[ERROR] unsupported bit depth")
+		return 0, 0, 0, false, errors.New("unsupported bit depth")
 	}
 	compMet, filtMet := head[26], head[27]
 	if compMet != 0 || filtMet != 0 {
@@ -71,7 +71,7 @@ func decodeIHDR(png *os.File) (w, h, depth int, inter bool, err error) {
 	case 6: // truecolour with alpha
 		return width, height, 32, inter, nil
 	}
-	return 0, 0, 0, false, errors.New("[ERROR] unsupported colour type")
+	return 0, 0, 0, false, errors.New("unsupported colour type")
 }
 
 func decodePLTE(png *os.File) (plte []byte, err error) {
@@ -110,6 +110,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		return nil, global.ErrTransmission
 	}
 	dataLen := utils.BToU32Big(len)
+	fmt.Println(dataLen)
 	data = make([]byte, 4+dataLen+4)
 	_, err = png.Read(data[:4])
 	if err == io.EOF {
