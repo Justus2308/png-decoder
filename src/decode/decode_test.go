@@ -11,6 +11,10 @@ var path = "test_images/test_32bpp_transp.png"
 
 
 func TestDecode(t *testing.T) {
-	global.SetPath(path)
-	Decode()
+	global.Path = path
+	err := Decode()
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }

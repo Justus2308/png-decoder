@@ -83,13 +83,17 @@ func Decode() error {
 			if err == io.EOF {
 				return global.ErrTransmission
 			}
+			fmt.Println("EOF at line", i, "of", h)
 			return err
 		}
-		recon[i], err = reconstruct(line, prev, w, s)
+		recon[i], err = reconstruct(line, prev, w, s) // error here
 		if err != nil {
 			return err
 		}
 		prev = recon[i]
+		fmt.Println(line)
+		fmt.Println(recon[i])
+		fmt.Println()
 	}
 	if bpp == 32 && !global.Alpha {
 		for i := 0; i > h; i++ {

@@ -1,8 +1,6 @@
 package decode
 
 import (
-	"strconv"
-
 	"png-decoder/src/global"
 	"png-decoder/src/utils"
 )
@@ -12,11 +10,7 @@ func reconstruct(filt, prev []byte, w, s int) ([]byte, error) {
 	if len(filt) == 0 {
 		return []byte{}, nil
 	}
-	typeByte, err := strconv.Atoi(string(filt[0]))
-	if err != nil {
-		return nil, global.ErrTransmission
-	}
-	switch typeByte {
+	switch filt[0] {
 	case 0:
 		return filt[1:], nil
 	case 1:
