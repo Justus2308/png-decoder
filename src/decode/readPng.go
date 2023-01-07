@@ -3,21 +3,22 @@ package decode
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
 
 	"png-decoder/src/global"
-	"png-decoder/src/util"
+	"png-decoder/src/utils"
 )
 
 var (
-	errUnknownAncChunk = errors.New("unknown ancilliary chunk type")
+	WarnUnknownAncChunk = errors.New("file contains unsupported ancilliary chunk")
 	errIEND = errors.New("internal: reached IEND chunk")
 )
 
-// TODO: support gAMA chunk
-func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
+
+func decodeIHDR(png *os.File) (w, h, depth int, inter bool, err error) {
 	const (
 		ihdrLen = 13
 	)
@@ -26,32 +27,32 @@ func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
 		if err == io.EOF {
 			err = global.ErrTransmission
 		}
-		return 0, 0, 0, false, false, err
+		return 0, 0, 0, false, err
 	}
 	if !bytes.Equal(head[:4], global.PNG[:4]) {
-		return 0, 0, 0, false, false, global.ErrUnsupported
+		return 0, 0, 0, false, global.ErrUnsupported
 	}
 	if !bytes.Equal(head[4:8], global.PNG[4:8]) {
-		return 0, 0, 0, false, false, global.ErrTransmission
+		return 0, 0, 0, false, global.ErrTransmission
 	}
-	if !bytes.Equal(head[8 : 8+4], util.U32toBBig(ihdrLen)) {
-		return 0, 0, 0, false, false, global.ErrTransmission
+	if !bytes.Equal(head[8 : 8+4], utils.U32toBBig(ihdrLen)) {
+		return 0, 0, 0, false, global.ErrTransmission
 	}
 	if !bytes.Equal(head[8+4 : 8+4+4], global.IHDR) {
-		return 0, 0, 0, false, false, global.ErrSyntax
+		return 0, 0, 0, false, global.ErrSyntax
 	}
-	checksum := util.U32toBBig(crc32.ChecksumIEEE(head[8+4 : 8+4+4+ihdrLen]))
+	checksum := utils.U32toBBig(crc32.ChecksumIEEE(head[8+4 : 8+4+4+ihdrLen]))
 	if !bytes.Equal(head[8+4+4+ihdrLen : 8+4+4+ihdrLen+4], checksum) {
-		return 0, 0, 0, false, false, global.ErrTransmission
+		return 0, 0, 0, false, global.ErrTransmission
 	}
-	width, height := int(int32(util.BToU32Big(head[16:20]))), int(int32(util.BToU32Big(head[20:24])))
+	width, height := int(int32(utils.BToU32Big(head[16:20]))), int(int32(utils.BToU32Big(head[20:24])))
 	bps, colType := head[24], head[25]
 	if bps != 8 {
-		return 0, 0, 0, false, false, errors.New("unsupported bit depth")
+		return 0, 0, 0, false, errors.New("[ERROR] unsupported bit depth")
 	}
 	compMet, filtMet := head[26], head[27]
 	if compMet != 0 || filtMet != 0 {
-		return 0, 0, 0, false, false, global.ErrUnsupported
+		return 0, 0, 0, false, global.ErrUnsupported
 	}
 	interlaced := head[28]
 	switch interlaced {
@@ -60,17 +61,17 @@ func decodeIHDR(png *os.File) (w, h, depth int, alpha, inter bool, err error) {
 	case 1:
 		inter = true
 	default:
-		return 0, 0, 0, false, false, global.ErrUnsupported
+		return 0, 0, 0, false, global.ErrUnsupported
 	}
 	switch colType {
 	case 2: // truecolour
-		return width, height, 24, false, inter, nil
+		return width, height, 24, inter, nil
 	case 3: // paletted
-		return width, height, 8, false, inter, nil
+		return width, height, 8, inter, nil
 	case 6: // truecolour with alpha
-		return width, height, 32, true, inter, nil
+		return width, height, 32, inter, nil
 	}
-	return 0, 0, 0, false, false, errors.New("unsupported colour type")
+	return 0, 0, 0, false, errors.New("[ERROR] unsupported colour type")
 }
 
 func decodePLTE(png *os.File) (plte []byte, err error) {
@@ -79,7 +80,7 @@ func decodePLTE(png *os.File) (plte []byte, err error) {
 	if err == io.EOF {
 		return nil, global.ErrTransmission
 	}
-	plteLen := util.BToU32Big(len)
+	plteLen := utils.BToU32Big(len)
 	plte = make([]byte, 4+plteLen+4)
 	_, err = png.Read(plte[:4])
 	if err == io.EOF {
@@ -93,7 +94,7 @@ func decodePLTE(png *os.File) (plte []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toBBig(crc32.ChecksumIEEE(plte[:plteLen-4]))
+		checksum := utils.U32toBBig(crc32.ChecksumIEEE(plte[:plteLen-4]))
 		if !bytes.Equal(plte[plteLen-4:], checksum) {
 			return nil, global.ErrTransmission
 		}
@@ -108,19 +109,20 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if err == io.EOF {
 		return nil, global.ErrTransmission
 	}
-	dataLen := util.BToU32Big(len)
+	dataLen := utils.BToU32Big(len)
 	data = make([]byte, 4+dataLen+4)
 	_, err = png.Read(data[:4])
 	if err == io.EOF {
 		return nil, global.ErrTransmission
 	}
+	fmt.Println(data)
 	switch {
 	case bytes.Equal(data[:4], global.IDAT):
 		_, err = png.Read(data[4:])
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toBBig(crc32.ChecksumIEEE(data[:dataLen-4]))
+		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:dataLen-4]))
 		if !bytes.Equal(data[dataLen-4:], checksum) {
 			return nil, global.ErrTransmission
 		}
@@ -130,7 +132,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := util.U32toBBig(crc32.ChecksumIEEE(data[:4]))
+		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:4]))
 		if dataLen == 0 && bytes.Equal(data[4:], checksum) {
 			return nil, errIEND
 		}
@@ -139,5 +141,5 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if data[0] & 0b00001000 != 0 {
 		return nil, global.ErrSyntax
 	}
-	return nil, errUnknownAncChunk
+	return nil, WarnUnknownAncChunk
 }

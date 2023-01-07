@@ -2,20 +2,19 @@ package global
 
 import (
 	"errors"
-	"flag"
 )
 
-var ( // flags
-	path = flag.String("src", "", "src: path to the source image")
-	mode = flag.String("mode", "encode", "mode: either encode or decode\ndefault mode: encode")
-	alpha = flag.Bool("alpha", true, "alpha: enable alpha channel, if available\ndefault value: true")
-	inter = flag.Bool("inter", false, "inter: enable adam7-interlacing\ndefault value: false")
+var ( // settings
+	path = ""
+	alpha = true
+	inter = false
 )
 
 var ( // errors
 	ErrUnsupported = errors.New("unsupported format")
 	ErrTransmission = errors.New("faulty transmission")
-	ErrSyntax = errors.New("syntax error")
+	ErrSyntax = errors.New("data syntax error")
+	ErrNoPixels = errors.New("file contains no pixels")
 )
 
 var ( // interlacing pattern
@@ -42,42 +41,32 @@ var ( // magic numbers
 
 
 func Path() string {
-	return *path
-}
-
-func Mode() (bool, error) { // true: encode ; false: decode
-	switch *mode {
-	case "encode":
-		return true, nil
-	case "decode":
-		return false, nil
-	default:
-		return true, errors.New("invalid operation mode")
-	}
+	return path
 }
 
 func Alpha() bool {
-	return *alpha
+	return alpha
 }
 
 func Interlaced() bool {
-	return *inter
+	return inter
 }
 
 
-// for testing
 func SetPath(p string) {
-	*path = p
-}
-
-func SetMode(m string) {
-	*mode = m
+	path = p
 }
 
 func SetAlpha(a bool) {
-	*alpha = a
+	alpha = a
 }
 
 func SetInterlaced(i bool) {
-	*inter = i
+	inter = i
+}
+
+func Reset() {
+	SetPath("")
+	SetAlpha(true)
+	SetInterlaced(false)
 }

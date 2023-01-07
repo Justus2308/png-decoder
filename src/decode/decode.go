@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"container/list"
+	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"png-decoder/src/global"
@@ -16,36 +16,36 @@ var (
 )
 
 
-func Decode() {
+func Decode() error {
 	png, err := os.Open(global.Path())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer png.Close()
-	w, h, bpp, alpha, inter, err := decodeIHDR(png)
+	w, h, bpp, inter, err := decodeIHDR(png)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if w == 0 || h == 0 {
-		panic("file contains no pixels")
+		return global.ErrNoPixels
 	}
-	log.Println(w, h, bpp, alpha, inter)
+	fmt.Println(w, h, bpp, inter)
 	if bpp == 8 {
 		/*plte*/_, err := decodePLTE(png)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
 	linkedIdat := list.New()
 	idat, err := decodeIDAT(png)
 	if err != nil {
 		if err == errIEND {
-			panic(global.ErrSyntax)
+			return global.ErrSyntax
 		}
-		if err == errUnknownAncChunk {
-			log.Println("warning: file contains unsupported ancilliary chunk")
+		if err == WarnUnknownAncChunk {
+			fmt.Println(err)
 		} else {
-			panic(err)
+			return err
 		}
 	}
 	linkedIdat.PushFront(idat)
@@ -55,11 +55,11 @@ func Decode() {
 			if err == errIEND {
 				break
 			}
-			if err == errUnknownAncChunk {
-				log.Println("warning: file contains unsupported ancilliary chunk")
+			if err == WarnUnknownAncChunk {
+				fmt.Println(err)
 				continue
 			}
-			panic(err)
+			return err
 		}
 		linkedIdat.InsertAfter(nextIdat, linkedIdat.Back())
 	}
@@ -71,7 +71,7 @@ func Decode() {
 	r := io.MultiReader(readers...)
 	z, err := zlib.NewReader(r)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer z.Close()
 	inflated := make([][]byte, h)
@@ -80,11 +80,12 @@ func Decode() {
 		_, err = z.Read(line)
 		if err != nil {
 			if err == io.EOF {
-				panic(global.ErrTransmission)
+				return global.ErrTransmission
 			}
-			panic(err)
+			return err
 		}
 		inflated[i] = line
 	}
-	log.Println(inflated)
+	fmt.Println(inflated)
+	return nil
 }

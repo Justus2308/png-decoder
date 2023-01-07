@@ -3,7 +3,7 @@ package encode
 import (
 	"sort"
 
-	"png-decoder/src/util"
+	"png-decoder/src/utils"
 )
 
 const (
@@ -82,10 +82,10 @@ func typeByte(slc []byte, b byte) []byte { // empty scanlines do not get a filte
 }
 
 func filter(orig, prev []byte, w, s int) []byte {
-	subF := subFltr(orig, w, s)
-	upF := upFltr(orig, prev, w, s)
-	averageF := averageFltr(orig, prev, w, s)
-	paethF := paethFltr(orig, prev, w, s)
+	subF := subFilt(orig, w, s)
+	upF := upFilt(orig, prev, w, s)
+	averageF := averageFilt(orig, prev, w, s)
+	paethF := paethFilt(orig, prev, w, s)
 	switch lowestScoreID(orig, subF, upF, averageF, paethF) {
 	case none:
 		return typeByte(orig, none)
@@ -101,7 +101,7 @@ func filter(orig, prev []byte, w, s int) []byte {
 	return nil
 }
 
-func subFltr(orig []byte, w, s int) []byte {
+func subFilt(orig []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
 		filt[i] = orig[i]
@@ -112,7 +112,7 @@ func subFltr(orig []byte, w, s int) []byte {
 	return filt
 }
 
-func upFltr(orig, prev []byte, w, s int) []byte {
+func upFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < w*s; i++ {
 		filt[i] = orig[i] - prev[i]
@@ -120,7 +120,7 @@ func upFltr(orig, prev []byte, w, s int) []byte {
 	return filt
 }
 
-func averageFltr(orig, prev []byte, w, s int) []byte {
+func averageFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
 		filt[i] = orig[i] - (prev[i] / 2)
@@ -131,13 +131,13 @@ func averageFltr(orig, prev []byte, w, s int) []byte {
 	return filt
 }
 
-func paethFltr(orig, prev []byte, w, s int) []byte {
+func paethFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
 	for i := 0; i < s; i++ {
-		filt[i] = orig[i] - util.PaethPred(0, prev[i], 0)
+		filt[i] = orig[i] - utils.PaethPred(0, prev[i], 0)
 	}
 	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - util.PaethPred(orig[i-s], prev[i], prev[i-s])
+		filt[i] = orig[i] - utils.PaethPred(orig[i-s], prev[i], prev[i-s])
 	}
 	return filt
 }

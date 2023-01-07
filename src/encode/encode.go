@@ -16,18 +16,18 @@ var (
 
 
 // TODO: implement adam7 interlacing
-func Encode() {
+func Encode() error {
 	bmp, err := os.Open(global.Path())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer bmp.Close()
 	w, h, bpp, alpha, topDown, err := decodeHeader(bmp)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if w == 0 || h == 0 {
-		panic("file contains no pixels")
+		return global.ErrNoPixels
 	}
 	if alpha {
 		alpha = global.Alpha()
@@ -35,7 +35,7 @@ func Encode() {
 	trgt := strings.TrimSuffix(global.Path(), ".bmp")
 	png, err := os.Create(trgt+suffix)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer png.Close()
 	png.Write(global.PNG) // magic numbers
@@ -44,26 +44,27 @@ func Encode() {
 	case 8:
 		plte, err := getPalette(bmp)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		png.Write(makePLTE(plte))
 		if err = decode8BitData(bmp, png, w, h, topDown); err != nil {
-			panic(err)
+			return err
 		}
 		png.Write(makeIEND())
 	case 24:
 		if err = decodeImgData(bmp, png, w, h, 3, false, topDown); err != nil {
-			panic(err)
+			return err
 		}
 		png.Write(makeIEND())
 	case 32:
 		if err = decodeImgData(bmp, png, w, h, 4, alpha, topDown); err != nil {
-			panic(err)
+			return err
 		}
 		png.Write(makeIEND())
 	default:
-		panic(global.ErrUnsupported)
+		return global.ErrUnsupported
 	}
+	return nil
 }
 
 func decode8BitData(bmp, png *os.File, w, h int, topDown bool) error {

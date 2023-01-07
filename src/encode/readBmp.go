@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"png-decoder/src/global"
-	"png-decoder/src/util"
+	"png-decoder/src/utils"
 )
 
 
@@ -33,7 +33,7 @@ func decodeHeader(bmp *os.File) (w, h, depth int, alpha, topDown bool, err error
 	if !bytes.Equal(head[:2], global.BMP) {
 		return 0, 0, 0, false, false, global.ErrUnsupported
 	}
-	offset, dibLen := util.BToU32Lit(head[10:fileHeaderLen]), util.BToU32Lit(head[fileHeaderLen:18])
+	offset, dibLen := utils.BToU32Lit(head[10:fileHeaderLen]), utils.BToU32Lit(head[fileHeaderLen:18])
 	if dibLen != infoHeaderLen && dibLen != v4HeaderLen && dibLen != v5HeaderLen {
 		return 0, 0, 0, false, false, errors.New("unsupported bmp type")
 	}
@@ -43,14 +43,14 @@ func decodeHeader(bmp *os.File) (w, h, depth int, alpha, topDown bool, err error
 		}
 		return 0, 0, 0, false, false, err
 	}
-	width, height := int(int32(util.BToU32Lit(head[18:22]))), int(int32(util.BToU32Lit(head[22:26])))
+	width, height := int(int32(utils.BToU32Lit(head[18:22]))), int(int32(utils.BToU32Lit(head[22:26])))
 	if height < 0 {
 		height, topDown = -height, true
 	}
-	planes, bpp, compression := util.BToU16Lit(head[26:28]), util.BToU16Lit(head[28:30]), util.BToU32Lit(head[30:34])
+	planes, bpp, compression := utils.BToU16Lit(head[26:28]), utils.BToU16Lit(head[28:30]), utils.BToU32Lit(head[30:34])
 	if compression == 3 && dibLen > infoHeaderLen &&
-		util.BToU32Lit(head[54:58]) == 0xff0000 && util.BToU32Lit(head[58:62]) == 0xff00 &&
-		util.BToU32Lit(head[62:66]) == 0xff && util.BToU32Lit(head[66:70]) == 0xff000000 {
+		utils.BToU32Lit(head[54:58]) == 0xff0000 && utils.BToU32Lit(head[58:62]) == 0xff00 &&
+		utils.BToU32Lit(head[62:66]) == 0xff && utils.BToU32Lit(head[66:70]) == 0xff000000 {
 		compression = 0
 	}
 	if planes != 1 || compression != 0 {
