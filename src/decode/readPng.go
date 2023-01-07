@@ -127,7 +127,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 			return nil, global.ErrTransmission
 		}
 		fmt.Println(data)
-		return data[4:dataLen-4], nil
+		return data[4:4+dataLen], nil
 	case bytes.Equal(data[:4], global.IEND):
 		fmt.Println("IEND")
 		_, err = png.Read(data[4:])
