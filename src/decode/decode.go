@@ -24,14 +24,13 @@ func Decode() error {
 		return err
 	}
 	defer png.Close()
-	w, h, bpp, inter, err := decodeIHDR(png)
+	w, h, bpp, /*inter*/_, err := decodeIHDR(png)
 	if err != nil {
 		return err
 	}
 	if w == 0 || h == 0 {
 		return global.ErrNoPixels
 	}
-	fmt.Println(w, h, bpp, inter)
 	if bpp == 8 {
 		/*plte*/_, err := decodePLTE(png)
 		if err != nil {
@@ -83,9 +82,9 @@ func Decode() error {
 		return err
 	}
 	defer bmp.Close()
-	bmp.Write(makeBMPHeader(w, h, s, bpp))
+	bmp.Write(makeV5Header(w, h, s, bpp))
 
-	prev := make([]byte, w*s)
+	prev := make([]byte, w*s, w*s)
 	for i := 0; i < h; i++ {
 		line := make([]byte, w*s+1)
 		_, err = z.Read(line) // inflate
@@ -100,11 +99,14 @@ func Decode() error {
 			return err
 		}
 		prev = recon
-		if bpp == 32 && !global.Alpha {
-			toWrite := make([]byte, w*s)
+		if bpp != 8 {
+			toWrite := make([]byte, w*s, w*s)
 			copy(toWrite, recon)
-			for i := 3; i < w*s; i+=4 {
-				toWrite[i] = 0xFF
+			for i := 0; i < w*s; i+=s {
+				toWrite[i+0], toWrite[i+2] = toWrite[i+2], toWrite[i+0] // flip RGB to BGR
+				if bpp == 32 && !global.Alpha {
+					toWrite[i+3] = 0xFF
+				}
 			}
 			bmp.Write(toWrite)
 		} else {
@@ -114,21 +116,71 @@ func Decode() error {
 	return nil
 }
 
-func makeBMPHeader(w, h, s, bpp int) []byte {
-	infoHeader := global.BMP // magic numbers
-	infoHeader = append(infoHeader, utils.U32toBLit(uint32(14+40+w*s*h))...) // bmp size
-	infoHeader = append(infoHeader, []byte{0x00, 0x00, 0x00, 0x00}...) // reserved
-	infoHeader = append(infoHeader, utils.U32toBBig(54)...) // offset
-	infoHeader = append(infoHeader, utils.U16toBLit(40)...) // header size
-	infoHeader = append(infoHeader, utils.U32toBLit(uint32(w))...) // width
-	infoHeader = append(infoHeader, utils.U32toBLit(uint32(h))...) // height
-	infoHeader = append(infoHeader, utils.U16toBLit(1)...) // planes
-	infoHeader = append(infoHeader, utils.U16toBLit(uint16(bpp))...) // bit count
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // compression
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // image size
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // horizontal resolution
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // vertical resolution
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // number of colors in palette
-	infoHeader = append(infoHeader, utils.U32toBLit(0)...) // number of important colors
+func assign(slc, a []byte, i int) []byte {
+	for j := 0; j < len(a); j++ {
+		slc[i+j] = a[j]
+	}
+	return slc
+}
+
+func makeInfoHeader(w, h, s, bpp int) []byte { // no alpha
+	infoHeader := make([]byte, 54)
+	// file header
+	assign(infoHeader, global.BMP, 0) // magic numbers
+	assign(infoHeader, utils.U32toBLit(uint32(14+40+w*s*h)), 2) // bmp size
+	assign(infoHeader, []byte{0x00, 0x00, 0x00, 0x00}, 6) // reserved
+	assign(infoHeader, utils.U32toBLit(54), 10) // offset
+	// DIB header
+	assign(infoHeader, utils.U32toBLit(40), 14) // header size
+	assign(infoHeader, utils.U32toBLit(uint32(w)), 18) // width
+	assign(infoHeader, utils.CompLit(utils.U32toBLit(uint32(h))), 22) // -height
+	assign(infoHeader, utils.U16toBLit(1), 26) // planes
+	assign(infoHeader, utils.U16toBLit(uint16(bpp)), 28) // bit count
+	assign(infoHeader, utils.U32toBLit(0), 30) // compression
+	assign(infoHeader, utils.U32toBLit(0), 34) // image size
+	assign(infoHeader, utils.U32toBLit(0), 38) // horizontal resolution
+	assign(infoHeader, utils.U32toBLit(0), 42) // vertical resolution
+	assign(infoHeader, utils.U32toBLit(0), 46) // number of colors in palette
+	assign(infoHeader, utils.U32toBLit(0), 50) // number of important colors
 	return infoHeader
+}
+
+func makeV5Header(w, h, s, bpp int) []byte { // alpha
+	v5Header := make([]byte, 138)
+	assign(v5Header, makeInfoHeader(w, h, s, bpp), 0)
+	// file header and beginning ob DIB header are identical in BITMAPINFOHEADER and V5INFOHEADER
+	assign(v5Header, utils.U32toBLit(uint32(14+124+w*s*h)), 2) // change bmp size
+	assign(v5Header, utils.U32toBLit(138), 10) // change offset
+	assign(v5Header, utils.U32toBLit(124), 14) // change header size
+	// extended v5 DIB header
+	assign(v5Header,[]byte{
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+	}, 54) // colour masks, are ignored in uncompressed BMPs
+	assign(v5Header, utils.U32toBLit(1), 70) // colour space type: LCS_sRGB
+	assign(v5Header,[]byte{
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+	}, 74) // colour endpoints, are ignored if CSType is not LCS_CALIBRATED_RGB
+	assign(v5Header,[]byte{
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+	}, 110) // colour curves, are ignored if CSType is not LCS_CALIBRATED_RGB
+	assign(v5Header, []byte{0x00, 0x00, 0x00, 0x00}, 122) // intent: LCS_GM_ABS_COLORIMETRIC
+	assign(v5Header,[]byte{
+		0x00, 0x00, 0x00, 0x00, // profile data, ignored unless CSType is PROFILE_...
+		0x00, 0x00, 0x00, 0x00, // profile size, ignored unless CSType is PROFILE_...
+		0x00, 0x00, 0x00, 0x00, // reserved
+	}, 126)
+	return v5Header
 }

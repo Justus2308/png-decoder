@@ -3,7 +3,6 @@ package decode
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
@@ -117,7 +116,6 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	}
 	switch {
 	case bytes.Equal(data[:4], global.IDAT):
-		fmt.Println("IDAT")
 		_, err = png.Read(data[4:])
 		if err == io.EOF {
 			return nil, global.ErrTransmission
@@ -126,22 +124,18 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		if !bytes.Equal(data[4+dataLen:], checksum) {
 			return nil, global.ErrTransmission
 		}
-		fmt.Println(data)
 		return data[4:4+dataLen], nil
 	case bytes.Equal(data[:4], global.IEND):
-		fmt.Println("IEND")
 		_, err = png.Read(data[4:])
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
 		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:4]))
 		if dataLen == 0 && bytes.Equal(data[4:], checksum) {
-			fmt.Println(data)
 			return nil, errIEND
 		}
 		return nil, global.ErrTransmission
 	}
-	fmt.Println("other")
 	if data[0] & 0b00001000 != 0 {
 		return nil, global.ErrSyntax
 	}
@@ -153,6 +147,5 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if !bytes.Equal(data[4+dataLen:], checksum) {
 		return nil, global.ErrTransmission
 	}
-	fmt.Println(data)
 	return nil, WarnUnknownAncChunk
 }

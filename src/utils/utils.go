@@ -46,6 +46,14 @@ func U32toBLit(i uint32) []byte {
 	return b
 }
 
+func CompLit(b []byte) []byte {
+	for i := range b {
+		b[i] = ^b[i]
+	}
+	b[0]++
+	return b
+}
+
 func PaethPred(a, b, c byte) byte {
 	p := int16(a) + int16(b) - int16(c)
 	pa := absU8(p - int16(a))
