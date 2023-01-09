@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"png-decoder/src/decode"
@@ -14,10 +15,15 @@ import (
 )
 
 
-var (
+var ( // errors
 	errInvalidFlags = errors.New("invalid flags")
 	errInvalidCmd = errors.New("invalid command")
+	errInvalidSyntax = errors.New("invalid syntax")
 )
+
+var ( // regex patterns
+	regActions = regexp.MustCompile("'\\^\\[\\[(A|B)|\\n$'m")
+) // TODO: implement regex into os.Stdin reader
 
 
 func main() {
@@ -33,12 +39,12 @@ func main() {
 			continue mainLoop
 		}
 		cmd = strings.TrimSuffix(cmd, "\n")
-		tokens := strings.Split(cmd, " ")
+		head := strings.SplitN(cmd, " ", 2)
 		switch {
-		case strings.Compare("quit", tokens[0]) == 0:
+		case strings.Compare("quit", head[0]) == 0:
 			fmt.Println("--------------------------")
 			break mainLoop
-		case strings.Compare("help", tokens[0]) == 0:
+		case strings.Compare("help", head[0]) == 0:
 			fmt.Println("encode: encodes BMP as PNG")
 			fmt.Println("syntax: encode \"path\"")
 			fmt.Println("flags: -alpha=TRUE/false (enable alpha channel), -inter=true/FALSE (enable adam7 interlacing)")
@@ -51,16 +57,12 @@ func main() {
 			fmt.Println()
 			fmt.Println("quit: exit the application")
 			continue mainLoop
-		case strings.Compare("encode", tokens[0]) == 0:
-			err = analyzeFlags(true, tokens[2:]...)
+		case strings.Compare("encode", head[0]) == 0:
+			err = checkSyntax(head...)
 			if err != nil {
-				global.Reset()
 				logError(err)
 				continue mainLoop
 			}
-			tokens[1] = strings.TrimPrefix(tokens[1], "\"")
-			tokens[1] = strings.TrimSuffix(tokens[1], "\"")
-			global.Path = tokens[1]
 			err = encode.Encode()
 			global.Reset()
 			if err != nil {
@@ -68,16 +70,12 @@ func main() {
 				continue mainLoop
 			}
 			log.Println("encoding successful")
-		case strings.Compare("decode", tokens[0]) == 0:
-			err = analyzeFlags(false, tokens[2:]...)
+		case strings.Compare("decode", head[0]) == 0:
+			err = checkSyntax(head...)
 			if err != nil {
-				global.Reset()
 				logError(err)
 				continue mainLoop
 			}
-			tokens[1] = strings.TrimPrefix(tokens[1], "\"")
-			tokens[1] = strings.TrimSuffix(tokens[1], "\"")
-			global.Path = tokens[1]
 			err = decode.Decode()
 			global.Reset()
 			if err != nil {
@@ -94,6 +92,32 @@ func main() {
 
 func logError(err error) {
 	log.Println("[ERROR]", err)
+}
+
+func checkSyntax(head... string) error {
+	if len(head) == 1 {
+		return errInvalidSyntax
+	}
+	if []rune("\"")[0] != rune(head[1][0]) {
+		return errInvalidSyntax
+	}
+	path := strings.SplitAfter(head[1], "\" ")
+	path[0] = strings.TrimSuffix(path[0], " ")
+	if []rune("\"")[0] != rune(path[0][len(path[0])-1]) {
+		return errInvalidSyntax
+	}
+	if len(path) > 1 {
+		flags := strings.Split(path[1], " ")
+		err := analyzeFlags(true, flags...)
+		if err != nil {
+			global.Reset()
+			return err
+		}
+	}
+	path[0] = strings.TrimPrefix(path[0], "\"")
+	path[0] = strings.TrimSuffix(path[0], "\"")
+	global.Path = path[0]
+	return nil
 }
 
 func analyzeFlags(enc bool, flags... string) error {
