@@ -32,6 +32,7 @@ There are five filter types defined:
 - 2 up: filt(x) = orig(x) - prior(x)
 - 3 average: filt(x) = orig(x) - floor((orig(x-bpp) + prior(x)) / 2)
 - 4 paeth: filt(x) = orig(x) - PaethPredictor(orig(x-bpp), prior(x), prior(x-bpp))
+
 filt: filtered scanline ; orig: original scanline ; prior: prior scanline
 The PaethPred function is a PNG specific implementation of the Paeth algorithm, as seen [here](https://www.w3.org/TR/2003/REC-PNG-20031110/#9Filter-type-4-Paeth "official documentation").
 Filters always work byte-by-byte. They use bytes of the current and of the prior scanline for their calculations, so the previous, unfiltered scanline must always be saved until the next one is fully filtered. The sequential reading of scanlines is implemented with Go's reader interface, which goes through the bmp file scanline by scanline.
@@ -59,6 +60,7 @@ For every filter type, there is also a reconstruction function:
 - 2 up: recon(x) = filt(x) + prior(x)
 - 3 average: recon(x) = filt(x) + floor((recon(x-bpp) + prior(x)) / 2)
 - 4 paeth: recon(x) = filt(x) + PaethPredictor(recon(x-bpp), prior(x), prior(x-bpp))
+
 recon: reconstructed scanline ; filt: filtered scanline ; prior: prior, reconstructed scanline
 The filter type bytes are ignored by reconstruction and will be trimmed from the final result.
 #### 3. Creating the BMP file
