@@ -94,4 +94,6 @@ Every BMP file has to start with the BMP-specific magic numbers. Afterwards, the
 ## Known Issues / WIP
 The decoding from PNG to BMP is currently not fully working. Transparency doesn't work and the first couple of scanlines are not properly decoded.
 
+PNG Decoding of paletted images is not implemented yet.
+
 Interlacing will be implemented in the future.
