@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	WarnUnknownAncChunk = errors.New("file contains unsupported ancilliary chunk")
+	warnUnknownAncChunk = errors.New("file contains unsupported ancilliary chunk")
 	errIEND = errors.New("internal: reached IEND chunk")
 )
 
@@ -147,5 +147,5 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if !bytes.Equal(data[4+dataLen:], checksum) {
 		return nil, global.ErrTransmission
 	}
-	return nil, WarnUnknownAncChunk
+	return nil, warnUnknownAncChunk
 }

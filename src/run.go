@@ -93,11 +93,7 @@ func main() {
 }
 
 func logError(err error) {
-	if err == decode.WarnUnknownAncChunk {
-		log.Println("[WARNING]", err)
-	} else {
-		log.Println("[ERROR]", err)
-	}
+	log.Println("[ERROR]", err)
 }
 
 func analyzeFlags(enc bool, flags... string) error {

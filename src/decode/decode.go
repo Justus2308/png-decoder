@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"container/list"
-	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -37,35 +37,12 @@ func Decode() error {
 			return err
 		}
 	}
-	linkedIdat := list.New()
-	idat, err := decodeIDAT(png)
+	concIdat, err := concatenateIDATs(png)
 	if err != nil {
-		if err == errIEND {
-			return global.ErrSyntax
-		}
-		if err == WarnUnknownAncChunk {
-			fmt.Println(err)
-		} else {
-			return err
-		}
-	}
-	linkedIdat.PushFront(idat)
-	for {
-		nextIdat, err := decodeIDAT(png)
-		if err != nil {
-			if err == errIEND {
-				break
-			}
-			if err == WarnUnknownAncChunk {
-				fmt.Println(err)
-				continue
-			}
-			return err
-		}
-		linkedIdat.InsertAfter(nextIdat, linkedIdat.Back())
+		return err
 	}
 	var readers []io.Reader
-	for e := linkedIdat.Front(); e != nil; e = e.Next() {
+	for e := concIdat.Front(); e != nil; e = e.Next() {
 		readers = append(readers, bytes.NewReader(e.Value.([]byte)))
 	}
 	s := bpp / 8
@@ -114,6 +91,37 @@ func Decode() error {
 		}
 	}
 	return nil
+}
+
+func concatenateIDATs(png *os.File) (*list.List, error) {
+	concIdat := list.New()
+	idat, err := decodeIDAT(png)
+	if err != nil {
+		if err == errIEND {
+			return nil, global.ErrSyntax
+		}
+		if err == warnUnknownAncChunk {
+			log.Println("[WARNING]", err)
+		} else {
+			return nil, err
+		}
+	}
+	concIdat.PushFront(idat)
+	for {
+		nextIdat, err := decodeIDAT(png)
+		if err != nil {
+			if err == errIEND {
+				break
+			}
+			if err == warnUnknownAncChunk {
+				log.Println("[WARNING]", err)
+				continue
+			}
+			return nil, err
+		}
+		concIdat.InsertAfter(nextIdat, concIdat.Back())
+	}
+	return concIdat, nil
 }
 
 func assign(slc, a []byte, i int) []byte {

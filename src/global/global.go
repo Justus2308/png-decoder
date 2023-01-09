@@ -14,7 +14,7 @@ var ( // errors
 	ErrUnsupported = errors.New("unsupported format")
 	ErrTransmission = errors.New("faulty transmission")
 	ErrSyntax = errors.New("data syntax error")
-	ErrNoPixels = errors.New("file contains no pixels")
+	ErrNoPixels = errors.New("image contains no pixels")
 )
 
 var ( // interlacing pattern
