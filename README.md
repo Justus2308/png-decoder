@@ -33,6 +33,7 @@ There are five filter types defined:
 - 3 average: filt(x) = orig(x) - floor((orig(x-bpp) + prior(x)) / 2)
 - 4 paeth: filt(x) = orig(x) - PaethPredictor(orig(x-bpp), prior(x), prior(x-bpp))
 filt: filtered scanline ; orig: original scanline ; prior: prior scanline
+The PaethPred function is a PNG specific implementation of the Paeth algorithm, as seen [here](https://www.w3.org/TR/2003/REC-PNG-20031110/#9Filter-type-4-Paeth).
 Filters always work byte-by-byte. They use bytes of the current and of the prior scanline for their calculations, so the previous, unfiltered scanline must always be saved until the next one is fully filtered. The sequential reading of scanlines is implemented with Go's reader interface, which goes through the bmp file scanline by scanline.
 After choosing the supposedly best filter type for each line, a filter type byte is prepended to the filtered scanline. This is implemented with as little new memory allocations as possible by appending one byte to the scanline, copying it onto itself with one byte offset and assigning the filter type byte to scanline[0].
 #### 3. Creating data chunks
@@ -40,7 +41,7 @@ A PNG is made up of at least three critical data chunks: the IHDR (image header)
 Multiple IDAT chunks must be consecutive and their image data will be concatenated on decoding.
 A chunk is made up of four main data fields: the length, its magic numbers, the data field and a CRC32 checksum generated to the IEEE standard.
 They contain what one would expect for the most part, except for the IDAT chunk. Its data field is not the raw image data stream, but it is compressed first by the zlib deflate algorithm. This is implemented line-by-line, which is not very efficient for small images, but it scales well. To keep this application from having to store the entire deflated data stream until the compression is completed, every scanline is encoded as a seperate IDAT chunk and instantly written to the target file.
-### 4. Creating the PNG file
+#### 4. Creating the PNG file
 Every PNG file has to start with the PNG-specific magic numbers. Afterwards, the first chunk has to be an IHDR chunk. If the image is paletted, there has to be one PLTE chunk present before the first IDAT chunk. The number of IDAT chunks is unlimited, as long as they are consecutive. The last chunk has to be an IEND chunk, any data after the IEND chunk will not be read by decoders.
 
 ### Decoder
