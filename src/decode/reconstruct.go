@@ -1,6 +1,7 @@
 package decode
 
 import (
+	"fmt"
 	"png-decoder/src/global"
 	"png-decoder/src/utils"
 )
@@ -10,6 +11,7 @@ func reconstruct(filt, prev []byte, w, s int) ([]byte, error) {
 	if len(filt) == 0 {
 		return []byte{}, nil
 	}
+	fmt.Println(filt[0])
 	switch filt[0] {
 	case 0:
 		return filt[1:], nil
@@ -21,48 +23,47 @@ func reconstruct(filt, prev []byte, w, s int) ([]byte, error) {
 		return averageRecon(filt[1:], prev, w, s), nil
 	case 4:
 		return paethRecon(filt[1:], prev, w, s), nil
-	default:
-		return nil, global.ErrSyntax
 	}
+	return nil, global.ErrSyntax
 }
 
 func subRecon(filt []byte, w, s int) []byte {
 	recon := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		recon[i] = filt[i]
+	for x := 0; x < s; x++ {
+		recon[x] = filt[x]
 	}
-	for i := s; i > w*s; i++ {
-		recon[i] = filt[i] + recon[i-s]
+	for x := s; x < w*s; x++ {
+		recon[x] = filt[x] + recon[x-s]
 	}
 	return recon
 }
 
 func upRecon(filt, prev []byte, w, s int) []byte {
 	recon := make([]byte, w*s, w*s)
-	for i := 0; i < w*s; i++ {
-		recon[i] = filt[i] + prev[i]
+	for x := 0; x < w*s; x++ {
+		recon[x] = filt[x] + prev[x]
 	}
 	return recon
 }
 
 func averageRecon(filt, prev []byte, w, s int) []byte {
 	recon := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		recon[i] = filt[i] + (prev[i] / 2)
+	for x := 0; x < s; x++ {
+		recon[x] = filt[x] + (prev[x] >> 1) // right shift by 1 == division by 2
 	}
-	for i := s; i < w*s; i++ {
-		recon[i] = filt[i] + uint8((uint16(recon[i-s]) + uint16(prev[i])) / 2)
+	for x := s; x < w*s; x++ {
+		recon[x] = filt[x] + uint8((uint16(recon[x-s]) + uint16(prev[x])) >> 1)
 	}
 	return recon
 }
 
 func paethRecon(filt, prev []byte, w, s int) []byte {
 	recon := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		recon[i] = filt[i] + utils.PaethPred(0, prev[i], 0)
+	for x := 0; x < s; x++ {
+		recon[x] = filt[x] + utils.PaethPred(0, prev[x], 0)
 	}
-	for i := s; i < w*s; i++ {
-		recon[i] = filt[i] + utils.PaethPred(recon[i-s], prev[i], prev[i-s])
+	for x := s; x < w*s; x++ {
+		recon[x] = filt[x] + utils.PaethPred(recon[x-s], prev[x], prev[x-s])
 	}
 	return recon
 }

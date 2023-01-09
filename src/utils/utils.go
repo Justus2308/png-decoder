@@ -50,7 +50,9 @@ func CompLit(b []byte) []byte {
 	for i := range b {
 		b[i] = ^b[i]
 	}
-	b[0]++
+	bInt := BToU32Lit(b)
+	bInt++
+	b = U32toBLit(bInt)
 	return b
 }
 

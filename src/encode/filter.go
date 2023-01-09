@@ -103,41 +103,41 @@ func filter(orig, prev []byte, w, s int) []byte {
 
 func subFilt(orig []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		filt[i] = orig[i]
+	for x := 0; x < s; x++ {
+		filt[x] = orig[x]
 	}
-	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - orig[i-s]
+	for x := s; x < w*s; x++ {
+		filt[x] = orig[x] - orig[x-s]
 	}
 	return filt
 }
 
 func upFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
-	for i := 0; i < w*s; i++ {
-		filt[i] = orig[i] - prev[i]
+	for x := 0; x < w*s; x++ {
+		filt[x] = orig[x] - prev[x]
 	}
 	return filt
 }
 
 func averageFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		filt[i] = orig[i] - (prev[i] / 2)
+	for x := 0; x < s; x++ {
+		filt[x] = orig[x] - (prev[x] >> 1) // right shift by 1 == division by 2
 	}
-	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - uint8((uint16(orig[i-s]) + uint16(prev[i])) / 2)
+	for x := s; x < w*s; x++ {
+		filt[x] = orig[x] - uint8((uint16(orig[x-s]) + uint16(prev[x])) >> 1)
 	}
 	return filt
 }
 
 func paethFilt(orig, prev []byte, w, s int) []byte {
 	filt := make([]byte, w*s, w*s)
-	for i := 0; i < s; i++ {
-		filt[i] = orig[i] - utils.PaethPred(0, prev[i], 0)
+	for x := 0; x < s; x++ {
+		filt[x] = orig[x] - utils.PaethPred(0, prev[x], 0)
 	}
-	for i := s; i < w*s; i++ {
-		filt[i] = orig[i] - utils.PaethPred(orig[i-s], prev[i], prev[i-s])
+	for x := s; x < w*s; x++ {
+		filt[x] = orig[x] - utils.PaethPred(orig[x-s], prev[x], prev[x-s])
 	}
 	return filt
 }

@@ -28,6 +28,7 @@ func Decode() error {
 	if err != nil {
 		return err
 	}
+	log.Println(w, h, bpp)
 	if w == 0 || h == 0 {
 		return global.ErrNoPixels
 	}
@@ -82,7 +83,7 @@ func Decode() error {
 			for i := 0; i < w*s; i+=s {
 				toWrite[i+0], toWrite[i+2] = toWrite[i+2], toWrite[i+0] // flip RGB to BGR
 				if bpp == 32 && !global.Alpha {
-					toWrite[i+3] = 0xFF
+					toWrite[i+3] = 0xFF // make alpha channel fully opaque
 				}
 			}
 			bmp.Write(toWrite)

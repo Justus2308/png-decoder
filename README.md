@@ -92,7 +92,7 @@ The filter type bytes are ignored by reconstruction and will be trimmed from the
 Every BMP file has to start with the BMP-specific magic numbers. Afterwards, the appropiate header is added (BMPINFOHEADER for images without transparency, V5INFOHEADER for images with a working alpha channel). After the header, the raw image data stream is simply appended.
 
 ## Known Issues / WIP
-The decoding from PNG to BMP is currently not fully working. Transparency doesn't work and the first couple of scanlines are not properly decoded.
+The decoding from PNG to BMP is currently not fully working. In some images there are irregular scanlines in even intervals which are fully transparent/black and whose effects trickle down to the next lines because of reconstruction. Decoding of unfiltered images works.
 
 PNG Decoding of paletted images is not implemented yet.
 
