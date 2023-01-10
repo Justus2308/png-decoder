@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 
 	"png-decoder/src/decode"
@@ -15,15 +14,25 @@ import (
 )
 
 
+const ( // help command output
+	helpF = "encode: encodes BMP as PNG\n"+
+			"syntax: encode \"path\"\n"+
+			"flags: -alpha=TRUE/false (enable alpha channel), -inter=true/FALSE (enable adam7 interlacing)\n"+
+			"\n"+
+			"decode: decodes PNG to BMP\n"+
+			"syntax: decode \"path\"\n"+
+			"flags: -alpha=TRUE/false (enables alpha channel)\n"+
+			"\n"+
+			"help: prints help for available commands\n"+
+			"\n"+
+			"quit: exit the application\n"
+)
+
 var ( // errors
 	errInvalidFlags = errors.New("invalid flags")
 	errInvalidCmd = errors.New("invalid command")
 	errInvalidSyntax = errors.New("invalid syntax")
 )
-
-var ( // regex patterns
-	regActions = regexp.MustCompile("'\\^\\[\\[(A|B)|\\n$'m")
-) // TODO: implement regex into os.Stdin reader
 
 
 func main() {
@@ -45,17 +54,7 @@ func main() {
 			fmt.Println("--------------------------")
 			break mainLoop
 		case strings.Compare("help", head[0]) == 0:
-			fmt.Println("encode: encodes BMP as PNG")
-			fmt.Println("syntax: encode \"path\"")
-			fmt.Println("flags: -alpha=TRUE/false (enable alpha channel), -inter=true/FALSE (enable adam7 interlacing)")
-			fmt.Println()
-			fmt.Println("decode: decodes PNG to BMP")
-			fmt.Println("syntax: decode \"path\"")
-			fmt.Println("flags: -alpha=TRUE/false (enables alpha channel)")
-			fmt.Println()
-			fmt.Println("help: prints help for available commands")
-			fmt.Println()
-			fmt.Println("quit: exit the application")
+			fmt.Printf(helpF)
 			continue mainLoop
 		case strings.Compare("encode", head[0]) == 0:
 			err = checkSyntax(head...)

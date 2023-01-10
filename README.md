@@ -1,4 +1,4 @@
-# PNG de-/encoder from BMP
+# PNG de-/encoder from/to BMP
 ## About
 This is a simple terminal-based application to decode files from PNG to BMP and back.
 
@@ -23,7 +23,7 @@ All flags are optional, their standard values are: alpha=true, inter=false. The 
 Interlacing is currently not supported so setting the flag to true will not do anything.
 
 ## The code
-The entire application is written in Google's Golang. Go's specialty is concurrency using goroutines, which will be implemented into this application in the future. I think the PNG filtering process expecially could really benefit from concurrency.
+The entire application is written in Google's Golang. Go's specialty is concurrency using goroutines, which will be implemented into this application in the future. I think the PNG filtering process expecially could really benefit from concurrency. Unfortunately, reading and writing PNG files is for the most part an inherently sequential process, as it often relies on already de-/encoded data in both the filtering and the compression process.
 
 ### Encoder
 #### 1. Decoding the BMP
