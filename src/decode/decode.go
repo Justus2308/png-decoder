@@ -32,7 +32,7 @@ func Decode() error {
 	if inter {
 		return errors.New("interlacing is not supported yet")
 	}
-	log.Println(w, h, bpp, inter)
+	// log.Println(w, h, bpp, inter)
 	if w == 0 || h == 0 {
 		return global.ErrNoPixels
 	}
