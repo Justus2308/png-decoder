@@ -3,17 +3,26 @@ package decode
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
+	"unicode"
 
 	"png-decoder/src/global"
 	"png-decoder/src/utils"
 )
 
-var (
+var ( // errors
 	warnUnknownAncChunk = errors.New("file contains unsupported ancilliary chunk")
-	errIEND = errors.New("internal: reached IEND chunk")
+	isPLTE = errors.New("INTERNAL: decoded PLTE chunk")
+	isIDAT = errors.New("INTERNAL: decoded IDAT chunk")
+	isIEND = errors.New("INTERNAL: reached IEND chunk")
+)
+
+var ( // image state
+	hasPLTE = false
+	readingIDATs = false
 )
 
 
@@ -73,36 +82,7 @@ func decodeIHDR(png *os.File) (w, h, depth int, inter bool, err error) {
 	return 0, 0, 0, false, errors.New("unsupported colour type")
 }
 
-func decodePLTE(png *os.File) (plte []byte, err error) {
-	len := make([]byte, 4)
-	_, err = png.Read(len)
-	if err == io.EOF {
-		return nil, global.ErrTransmission
-	}
-	plteLen := utils.BToU32Big(len)
-	plte = make([]byte, 4+plteLen+4)
-	_, err = png.Read(plte[:4])
-	if err == io.EOF {
-		return nil, global.ErrTransmission
-	}
-	if bytes.Equal(plte[:4], global.PLTE) {
-		if plteLen%3 != 0 {
-			return nil, global.ErrTransmission
-		}
-		_, err = png.Read(plte[4:])
-		if err == io.EOF {
-			return nil, global.ErrTransmission
-		}
-		checksum := utils.U32toBBig(crc32.ChecksumIEEE(plte[:plteLen-4]))
-		if !bytes.Equal(plte[plteLen-4:], checksum) {
-			return nil, global.ErrTransmission
-		}
-		return plte[4:plteLen-4], nil
-	}
-	return nil, global.ErrSyntax
-}
-
-func decodeIDAT(png *os.File) (data []byte, err error) {
+func decodeNext(png *os.File, pal bool) (data []byte, err error) {
 	len := make([]byte, 4)
 	_, err = png.Read(len)
 	if err == io.EOF {
@@ -115,7 +95,29 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		return nil, global.ErrTransmission
 	}
 	switch {
+	case bytes.Equal(data[:3], global.PLTE):
+		if hasPLTE || readingIDATs {
+			return nil, global.ErrSyntax
+		}
+		hasPLTE = true
+		if dataLen%3 != 0 {
+			return nil, global.ErrTransmission
+		}
+		_, err = png.Read(data[4:])
+		if err == io.EOF {
+			return nil, global.ErrTransmission
+		}
+		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:dataLen-4]))
+		if !bytes.Equal(data[dataLen-4:], checksum) {
+			return nil, global.ErrTransmission
+		}
+		hasPLTE = true
+		return data[4:dataLen-4], isPLTE
 	case bytes.Equal(data[:4], global.IDAT):
+		if pal && !hasPLTE {
+			return nil, global.ErrSyntax
+		}
+		readingIDATs = true
 		_, err = png.Read(data[4:])
 		if err == io.EOF {
 			return nil, global.ErrTransmission
@@ -124,7 +126,7 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		if !bytes.Equal(data[4+dataLen:], checksum) {
 			return nil, global.ErrTransmission
 		}
-		return data[4:4+dataLen], nil
+		return data[4:4+dataLen], isIDAT
 	case bytes.Equal(data[:4], global.IEND):
 		_, err = png.Read(data[4:])
 		if err == io.EOF {
@@ -132,11 +134,15 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 		}
 		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:4]))
 		if dataLen == 0 && bytes.Equal(data[4:], checksum) {
-			return nil, errIEND
+			return nil, isIEND
 		}
 		return nil, global.ErrTransmission
 	}
-	if data[0] & 0b00001000 != 0 {
+	if readingIDATs {
+		return nil, global.ErrSyntax
+	}
+	if unicode.IsUpper(rune(data[0])) { // checks whether chunk is critical or ancilliary
+		fmt.Println(string(data[:4]))
 		return nil, global.ErrSyntax
 	}
 	_, err = png.Read(data[4:])
@@ -147,5 +153,9 @@ func decodeIDAT(png *os.File) (data []byte, err error) {
 	if !bytes.Equal(data[4+dataLen:], checksum) {
 		return nil, global.ErrTransmission
 	}
-	return nil, warnUnknownAncChunk
+	privB := "private"
+	if unicode.IsUpper(rune(data[1])) { // checks whether chunk is public or private
+		privB = "public"
+	}
+	return nil, fmt.Errorf("%w %v (%v)", warnUnknownAncChunk, string(data[:4]), privB)
 }

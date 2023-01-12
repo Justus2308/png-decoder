@@ -2,6 +2,7 @@ package decode
 
 import (
 	"fmt"
+
 	"png-decoder/src/global"
 	"png-decoder/src/utils"
 )
@@ -14,6 +15,8 @@ func reconstruct(filt, prev []byte, w, s int) ([]byte, error) {
 	fmt.Println(filt[0])
 	switch filt[0] {
 	case 0:
+		fmt.Println(prev)
+		fmt.Println(filt)
 		return filt[1:], nil
 	case 1:
 		return subRecon(filt[1:], w, s), nil

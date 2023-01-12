@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"container/list"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -24,21 +25,61 @@ func Decode() error {
 		return err
 	}
 	defer png.Close()
-	w, h, bpp, /*inter*/_, err := decodeIHDR(png)
+	w, h, bpp, inter, err := decodeIHDR(png)
 	if err != nil {
 		return err
 	}
-	log.Println(w, h, bpp)
+	if inter {
+		return errors.New("interlacing is not supported yet")
+	}
+	log.Println(w, h, bpp, inter)
 	if w == 0 || h == 0 {
 		return global.ErrNoPixels
 	}
-	if bpp == 8 {
-		/*plte*/_, err := decodePLTE(png)
+	s := bpp / 8
+	trgt := strings.TrimSuffix(global.Path, ".png")
+	bmp, err := os.Create(trgt+suffix)
+	if err != nil {
+		return err
+	}
+	defer bmp.Close()
+
+	pal := false
+	switch bpp {
+	case 8:
+		pal = true
+		var plte []byte
+		for {
+			plte, err = decodeNext(png, pal)
+			if err != nil {
+				if err == isPLTE {
+					break
+				}
+				if err == isIEND {
+					return global.ErrSyntax
+				}
+				if errors.Is(err, warnUnknownAncChunk) {
+					log.Println("[WARNING]", err)
+				}
+				return err
+			}
+		}
+		bmp.Write(makeInfoHeaderPaletted(w, h, s, bpp))
+		palette, err := makePalette(plte)
 		if err != nil {
 			return err
 		}
+		bmp.Write(palette)
+	case 24:
+		bmp.Write(makeInfoHeader(w, h, s, bpp))
+	case 32:
+		if global.Alpha {
+			bmp.Write(makeV5Header(w, h, s, bpp))
+		} else {
+			bmp.Write(makeInfoHeader(w, h, s, bpp))
+		}
 	}
-	concIdat, err := concatenateIDATs(png)
+	concIdat, err := concatenateIDATs(png, pal)
 	if err != nil {
 		return err
 	}
@@ -46,7 +87,6 @@ func Decode() error {
 	for e := concIdat.Front(); e != nil; e = e.Next() {
 		readers = append(readers, bytes.NewReader(e.Value.([]byte)))
 	}
-	s := bpp / 8
 	r := io.MultiReader(readers...)
 	z, err := zlib.NewReader(r)
 	if err != nil {
@@ -54,23 +94,18 @@ func Decode() error {
 	}
 	defer z.Close()
 
-	trgt := strings.TrimSuffix(global.Path, ".png")
-	bmp, err := os.Create(trgt+suffix)
-	if err != nil {
-		return err
-	}
-	defer bmp.Close()
-	bmp.Write(makeV5Header(w, h, s, bpp))
-
 	prev := make([]byte, w*s, w*s)
 	for i := 0; i < h; i++ {
 		line := make([]byte, w*s+1)
-		_, err = z.Read(line) // inflate
+		_, err := z.Read(line) // inflate
 		if err != nil && err != io.EOF {
 			if err == io.ErrUnexpectedEOF {
 				return global.ErrTransmission
 			}
 			return err
+		}
+		if err == io.EOF && i-1 != h {
+			return global.ErrTransmission
 		}
 		recon, err := reconstruct(line, prev, w, s)
 		if err != nil {
@@ -94,33 +129,46 @@ func Decode() error {
 	return nil
 }
 
-func concatenateIDATs(png *os.File) (*list.List, error) {
+func makePalette(plte []byte) ([]byte, error) {
+	palette := make([]byte, 256*4)
+	for i, j := 0, 0; i < len(plte); i, j = i+3, j+4 {
+		if j >= len(palette) {
+			return nil, global.ErrTransmission
+		}
+		palette[j+0] = plte[i+2]
+		palette[j+1] = plte[i+1]
+		palette[j+2] = plte[i+0]
+	}
+	return palette, nil
+}
+
+func concatenateIDATs(png *os.File, pal bool) (*list.List, error) {
 	concIdat := list.New()
-	idat, err := decodeIDAT(png)
-	if err != nil {
-		if err == errIEND {
+	next, err := decodeNext(png, pal)
+	if err != isIDAT {
+		if err == isIEND {
 			return nil, global.ErrSyntax
 		}
-		if err == warnUnknownAncChunk {
+		if errors.Is(err, warnUnknownAncChunk) {
 			log.Println("[WARNING]", err)
 		} else {
 			return nil, err
 		}
 	}
-	concIdat.PushFront(idat)
+	concIdat.PushFront(next)
 	for {
-		nextIdat, err := decodeIDAT(png)
-		if err != nil {
-			if err == errIEND {
+		next, err := decodeNext(png, pal)
+		if err != isIDAT {
+			if err == isIEND {
 				break
 			}
-			if err == warnUnknownAncChunk {
+			if errors.Is(err, warnUnknownAncChunk)  {
 				log.Println("[WARNING]", err)
 				continue
 			}
 			return nil, err
 		}
-		concIdat.InsertAfter(nextIdat, concIdat.Back())
+		concIdat.InsertAfter(next, concIdat.Back())
 	}
 	return concIdat, nil
 }
@@ -138,7 +186,7 @@ func makeInfoHeader(w, h, s, bpp int) []byte { // no alpha
 	assign(infoHeader, global.BMP, 0) // magic numbers
 	assign(infoHeader, utils.U32toBLit(uint32(14+40+w*s*h)), 2) // bmp size
 	assign(infoHeader, []byte{0x00, 0x00, 0x00, 0x00}, 6) // reserved
-	assign(infoHeader, utils.U32toBLit(54), 10) // offset
+	assign(infoHeader, utils.U32toBLit(14+40), 10) // offset
 	// DIB header
 	assign(infoHeader, utils.U32toBLit(40), 14) // header size
 	assign(infoHeader, utils.U32toBLit(uint32(w)), 18) // width
@@ -154,12 +202,20 @@ func makeInfoHeader(w, h, s, bpp int) []byte { // no alpha
 	return infoHeader
 }
 
+func makeInfoHeaderPaletted(w, h, s, bpp int) []byte {
+	pInfoHeader := make([]byte, 14+40)
+	assign(pInfoHeader, makeInfoHeader(w, h, s, bpp), 0)
+	assign(pInfoHeader, utils.U32toBLit(uint32(14+40+256*4+w*s*h)), 2) // change bmp size
+	assign(pInfoHeader, utils.U32toBLit(14+40+256*4), 10) // change offset
+	return pInfoHeader
+}
+
 func makeV5Header(w, h, s, bpp int) []byte { // alpha
-	v5Header := make([]byte, 138)
+	v5Header := make([]byte, 14+124)
 	assign(v5Header, makeInfoHeader(w, h, s, bpp), 0)
 	// file header and beginning ob DIB header are identical in BITMAPINFOHEADER and V5INFOHEADER
 	assign(v5Header, utils.U32toBLit(uint32(14+124+w*s*h)), 2) // change bmp size
-	assign(v5Header, utils.U32toBLit(138), 10) // change offset
+	assign(v5Header, utils.U32toBLit(14+124), 10) // change offset
 	assign(v5Header, utils.U32toBLit(124), 14) // change header size
 	// extended v5 DIB header
 	assign(v5Header,[]byte{

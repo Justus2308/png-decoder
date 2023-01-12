@@ -15,7 +15,7 @@
 # vendor/
 
 # Apple Finder config
-*.DS_Store
+.DS_Store
 
 # Test data folders
 **/*_test/

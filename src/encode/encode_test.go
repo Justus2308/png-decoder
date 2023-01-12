@@ -15,6 +15,7 @@ var path = "img_test/test_32bpp_transp.bmp"
 
 func TestEncode(t *testing.T) {
 	global.Path = path
+	t.Log("encoding", global.Path)
 	err := Encode()
 	if err != nil {
 		t.Error(err)
