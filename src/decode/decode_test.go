@@ -7,7 +7,7 @@ import (
 )
 
 
-var path = "img_test/test_32bpp_transp2.png"
+var path = "img_test/test_8bpp.png"
 
 
 func TestSubRecon(t *testing.T) {

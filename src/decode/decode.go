@@ -60,6 +60,7 @@ func Decode() error {
 				}
 				if errors.Is(err, warnUnknownAncChunk) {
 					log.Println("[WARNING]", err)
+					continue
 				}
 				return err
 			}
@@ -100,7 +101,7 @@ func Decode() error {
 		line := make([]byte, w*s+1)
 		n, err := z.Read(line) // inflate
 		t += n
-		log.Println("inflated", n, "bytes in line", i, "into buffer of size", len(line), "; error:", err)
+		// log.Println("inflated", n, "bytes in line", i, "into buffer of size", len(line), "; error:", err)
 		if err != nil && err != io.EOF {
 			if err == io.ErrUnexpectedEOF {
 				return global.ErrTransmission
@@ -111,7 +112,7 @@ func Decode() error {
 			return global.ErrTransmission
 		}
 		// reader will stop reading into line after reaching a total of 32768 inflated bytes (32 KiB)
-		// this checks for an incomplete line inflation
+		// v v v this checks for an incomplete line inflation and completes it v v v
 		if t != (w*s+1)*(i+1) {
 			rest := make([]byte, (w*s+1)*(i+1)-t)
 			log.Println(len(rest))
@@ -177,7 +178,6 @@ func concatenateIDATs(png *os.File, pal bool) (*list.List, error) {
 		}
 	} else {
 		concIdat.PushFront(next)
-		log.Println("pushed to front of ll:", next)
 	}
 	for {
 		next, err := decodeNext(png, pal)
@@ -192,7 +192,6 @@ func concatenateIDATs(png *os.File, pal bool) (*list.List, error) {
 			return nil, err
 		} else {
 			concIdat.PushBack(next)
-			log.Println("pushed to back of ll:", next)
 		}
 	}
 	return concIdat, nil

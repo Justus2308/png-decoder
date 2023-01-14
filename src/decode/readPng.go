@@ -95,7 +95,7 @@ func decodeNext(png *os.File, pal bool) (data []byte, err error) {
 		return nil, global.ErrTransmission
 	}
 	switch {
-	case bytes.Equal(data[:3], global.PLTE):
+	case bytes.Equal(data[:4], global.PLTE):
 		if hasPLTE || readingIDATs {
 			return nil, global.ErrSyntax
 		}
@@ -107,12 +107,12 @@ func decodeNext(png *os.File, pal bool) (data []byte, err error) {
 		if err == io.EOF {
 			return nil, global.ErrTransmission
 		}
-		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:dataLen-4]))
-		if !bytes.Equal(data[dataLen-4:], checksum) {
+		checksum := utils.U32toBBig(crc32.ChecksumIEEE(data[:4+dataLen]))
+		if !bytes.Equal(data[4+dataLen:], checksum) {
 			return nil, global.ErrTransmission
 		}
 		hasPLTE = true
-		return data[4:dataLen-4], isPLTE
+		return data[4:4+dataLen], isPLTE
 	case bytes.Equal(data[:4], global.IDAT):
 		if pal && !hasPLTE {
 			return nil, global.ErrSyntax

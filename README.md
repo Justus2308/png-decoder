@@ -92,9 +92,3 @@ The filter type bytes are ignored by reconstruction and will be trimmed from the
 
 #### 3. Creating the BMP file
 Every BMP file has to start with the BMP-specific magic numbers. Afterwards, the appropiate header is added (BMPINFOHEADER for images without transparency, V5INFOHEADER for images with a working alpha channel). After the header, the raw image data stream is simply appended.
-
-## Known Issues / WIP
-Decoding paletted images is currently untested.
-
-
-Interlacing will be implemented in the future.
