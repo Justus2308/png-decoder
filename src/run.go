@@ -16,12 +16,12 @@ import (
 
 const ( // help command output
 	helpF = "encode: encodes BMP as PNG\n"+
-			"syntax: encode \"path\"\n"+
-			"flags: -alpha=TRUE/false (enable alpha channel), -inter=true/FALSE (enable adam7 interlacing)\n"+
+			"syntax: encode \"path\" -flags\n"+
+			"flags: -alpha=true/false (enable alpha channel), -inter=true/false (enable adam7 interlacing)\n"+
 			"\n"+
 			"decode: decodes PNG to BMP\n"+
-			"syntax: decode \"path\"\n"+
-			"flags: -alpha=TRUE/false (enables alpha channel)\n"+
+			"syntax: decode \"path\" -flags\n"+
+			"flags: -alpha=true/false (enables alpha channel)\n"+
 			"\n"+
 			"help: prints help for available commands\n"+
 			"\n"+
