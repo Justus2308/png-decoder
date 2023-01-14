@@ -1,6 +1,7 @@
 package decode
 
 import (
+	"fmt"
 	"png-decoder/src/global"
 	"png-decoder/src/utils"
 )
@@ -22,6 +23,7 @@ func reconstruct(filt, prev []byte, w, s int) ([]byte, error) {
 	case 4:
 		return paethRecon(filt[1:], prev, w, s), nil
 	}
+	fmt.Println("here")
 	return nil, global.ErrSyntax
 }
 

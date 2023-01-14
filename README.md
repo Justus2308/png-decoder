@@ -22,7 +22,7 @@ All flags are optional, their standard values are: alpha=true, inter=false. The 
 
 Interlacing is currently not supported so setting the flag to true will not do anything.
 
-## The code
+## Implementation
 The entire application is written in Google's Golang. Go's specialty is concurrency using goroutines, which will be implemented into this application in the future. I think the PNG filtering process expecially could really benefit from concurrency. Unfortunately, reading and writing PNG files is for the most part an inherently sequential process, as it often relies on already de-/encoded data in both the filtering and the compression process.
 
 ### Encoder
@@ -68,8 +68,10 @@ Every PNG file has to start with the PNG-specific magic numbers. Afterwards, the
 #### 1. Decoding the PNG
 First, the decoder checks if the magic numbers are correct. Then it checks if the first chunk is an IHDR by looking at its (fixed) length and its magic numbers. Finally it checks, if its CRC32 checksum is correct. Then it reads its data, like image dimensions and colour depth.
 
-If the image is paletted, the next chunk has to be a PLTE chunk. There can only be one PLTE chunk max per image.
-For every chunk after that the decoder will check the chunk type first. If the chunk is ancilliary, it will issue a warning to the user and ignore the chunk. If the chunk is critical, but not either an IDAT or IEND chunk, it will return an error. If a chunk is critical is determined by looking at the 5th bit of its magic number's first byte. If it is 1, it's critical, if not, it is ancilliary. This catches e.g. multiple IHDR or PLTE chunks, or even unknown, not officialy specified critical chunks.
+If the image is paletted, the next critical chunk has to be a PLTE chunk. There can only be one PLTE chunk per image.
+For every chunk the decoder will check the chunk type first. If the chunk is ancilliary, it will issue a warning to the user and ignore the chunk. If the chunk is critical, but not either an IDAT or IEND chunk, it will return an error. Whether a chunk is critical is determined by looking at its magic number's first byte. If it is in uppercase, it's critical, if not, it is ancilliary. This catches e.g. multiple IHDR or PLTE chunks, or even unknown, not officialy specified critical chunks.
+
+For ancilliary chunks, the decoder also checks the magic number's second byte. If it is uppercase, it is a public chunk, which means it is defined by the official PNG standard. If not, it is a private, unofficial chunk. The ancilliary chunk type and whether it's public or private will be part of the warning issued to the user.
 
 When the IEND chunk occurs, the decoder will stop reading the PNG file.
 All concatenated IDAT chunks have to be kept in memory simultaneously, as their deflated data stream has its own checksum which is generated from the entire data stream and needs to be checked by the zlib inflate algorithm.
@@ -92,8 +94,7 @@ The filter type bytes are ignored by reconstruction and will be trimmed from the
 Every BMP file has to start with the BMP-specific magic numbers. Afterwards, the appropiate header is added (BMPINFOHEADER for images without transparency, V5INFOHEADER for images with a working alpha channel). After the header, the raw image data stream is simply appended.
 
 ## Known Issues / WIP
-The decoding from PNG to BMP is currently not fully working. In some images there are irregular scanlines in even intervals which are fully transparent/black and whose effects trickle down to the next lines because of reconstruction. Decoding of unfiltered images works.
+Decoding paletted images is currently untested.
 
-PNG Decoding of paletted images is not implemented yet.
 
 Interlacing will be implemented in the future.

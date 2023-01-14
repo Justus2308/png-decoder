@@ -142,7 +142,6 @@ func decodeNext(png *os.File, pal bool) (data []byte, err error) {
 		return nil, global.ErrSyntax
 	}
 	if unicode.IsUpper(rune(data[0])) { // checks whether chunk is critical or ancilliary
-		fmt.Println(string(data[:4]))
 		return nil, global.ErrSyntax
 	}
 	_, err = png.Read(data[4:])

@@ -95,24 +95,47 @@ func Decode() error {
 	defer z.Close()
 
 	prev := make([]byte, w*s, w*s)
+	var t int
 	for i := 0; i < h; i++ {
 		line := make([]byte, w*s+1)
-		_, err := z.Read(line) // inflate
+		n, err := z.Read(line) // inflate
+		t += n
+		log.Println("inflated", n, "bytes in line", i, "into buffer of size", len(line), "; error:", err)
 		if err != nil && err != io.EOF {
 			if err == io.ErrUnexpectedEOF {
 				return global.ErrTransmission
 			}
 			return err
 		}
-		if err == io.EOF && i-1 != h {
+		if err == io.EOF && i+1 != h {
 			return global.ErrTransmission
+		}
+		// reader will stop reading into line after reaching a total of 32768 inflated bytes (32 KiB)
+		// this checks for an incomplete line inflation
+		if t != (w*s+1)*(i+1) {
+			rest := make([]byte, (w*s+1)*(i+1)-t)
+			log.Println(len(rest))
+			nr, err := z.Read(rest)
+			if err != nil && err != io.EOF {
+				if err == io.ErrUnexpectedEOF {
+					return global.ErrTransmission
+				}
+				return err
+			}
+			if err == io.EOF && i+1 != h {
+				return global.ErrTransmission
+			}
+			line = assign(line, rest, n)
+			t += nr
 		}
 		recon, err := reconstruct(line, prev, w, s)
 		if err != nil {
 			return err
 		}
 		prev = recon
-		if bpp != 8 {
+		if pal {
+			bmp.Write(recon)
+		} else {
 			toWrite := make([]byte, w*s, w*s)
 			copy(toWrite, recon)
 			for i := 0; i < w*s; i+=s {
@@ -122,8 +145,6 @@ func Decode() error {
 				}
 			}
 			bmp.Write(toWrite)
-		} else {
-			bmp.Write(recon)
 		}
 	}
 	return nil
@@ -154,8 +175,10 @@ func concatenateIDATs(png *os.File, pal bool) (*list.List, error) {
 		} else {
 			return nil, err
 		}
+	} else {
+		concIdat.PushFront(next)
+		log.Println("pushed to front of ll:", next)
 	}
-	concIdat.PushFront(next)
 	for {
 		next, err := decodeNext(png, pal)
 		if err != isIDAT {
@@ -167,8 +190,10 @@ func concatenateIDATs(png *os.File, pal bool) (*list.List, error) {
 				continue
 			}
 			return nil, err
+		} else {
+			concIdat.PushBack(next)
+			log.Println("pushed to back of ll:", next)
 		}
-		concIdat.InsertAfter(next, concIdat.Back())
 	}
 	return concIdat, nil
 }
